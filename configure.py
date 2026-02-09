@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 112866 2026-02-09 09:00:41Z andreas.loeffler@oracle.com $
+# $Id: configure.py 112867 2026-02-09 09:03:13Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 112866 $"
+__revision__ = "$Revision: 112867 $"
 
 import argparse
 import ctypes
@@ -3641,8 +3641,8 @@ def main():
     oParser.add_argument('--ignore-in-tree-libs', help='Ignores all in-tree libs', action='store_true', default=None, dest='config_ignore_in_tree_libs');
     # Disables building the Extension Pack explicitly. Only makes sense for the non-OSE build.
     oParser.add_argument('--disable-extpack', '--without-extpack', help='Disables building the Extension Pack', action='store_true', default=None, dest='config_disable_extpack');
-    oParser.add_argument('--with-hardening', help='Enables hardening', action='store_true', default=None, dest='VBOX_WITH_HARDENING=1');
-    oParser.add_argument('--disable-hardening', '--without-hardening', help='Disables hardening', action='store_true', default=None, dest='VBOX_WITH_HARDENING=');
+    oParser.add_argument('--with-hardening', help='Enables hardening', action='store_true', default=None, dest='config_with_hardening');
+    oParser.add_argument('--disable-hardening', '--without-hardening', help='Disables hardening', action='store_true', default=None, dest='config_without_hardening');
     oParser.add_argument('--output-file-autoconfig', help='Path to output AutoConfig.kmk file', default=None, dest='config_file_autoconfig');
     oParser.add_argument('--output-file-env', help='Path to output env[.bat|.sh] file', default=None, dest='config_file_env');
     oParser.add_argument('--output-file-log', help='Path to output log file', default=None, dest='config_file_log');
@@ -3757,7 +3757,12 @@ def main():
     g_oEnv.set('KBUILD_TARGET_ARCH', oArgs.config_build_arch);
     g_oEnv.set('KBUILD_TARGET_CPU', 'blend'); ## @todo Check this.
     g_oEnv.set('KBUILD_PATH', oArgs.config_tools_path_kbuild);
-    g_oEnv.set('VBOX_WITH_HARDENING', '1');
+
+    # If hardening is not explicitly enabled or disabled, use the default from the source tree.
+    if oArgs.config_with_hardening:
+        g_oEnv.set('VBOX_WITH_HARDENING', '2'); # Set to 2 as an indicator that our script has modified it.
+    elif oArgs.config_without_hardening:
+        g_oEnv.set('VBOX_WITHOUT_HARDENING', '1');
 
     # Handle out directory.
     if  oArgs.config_out_dir \
