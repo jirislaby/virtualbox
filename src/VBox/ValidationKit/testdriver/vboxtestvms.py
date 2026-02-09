@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: vboxtestvms.py 112893 2026-02-09 11:08:17Z serkan.bayraktar@oracle.com $
+# $Id: vboxtestvms.py 112895 2026-02-09 11:10:38Z serkan.bayraktar@oracle.com $
 
 """
 VirtualBox Test VMs
@@ -36,7 +36,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 112893 $"
+__version__ = "$Revision: 112895 $"
 
 # Standard Python imports.
 import copy;
@@ -137,7 +137,7 @@ g_aaNameToDetails = \
     [ 'Linux',          'OpenSUSE',              g_k32,    1, 256, ['opensuse[0-9]*', 'suse[0-9]*', ]],
     [ 'Linux_64',       'OpenSUSE_64',           g_k64,    1, 256, ['opensuse[0-9]*-64', 'suse[0-9]*-64', ]],
     [ 'Linux',          'Ubuntu16',              g_k32,    1, 256, ['ubuntu16[0-9]*', ]],
-    [ 'Linux',          'Ubuntu16_64',           g_k64,    1, 256, ['ubuntu16[0-9]*-64', ]],
+    [ 'Linux_64',       'Ubuntu16_64',           g_k64,    1, 256, ['ubuntu16[0-9]*-64', ]],
     [ 'Linux',          'Ubuntu',                g_k32,    1, 256, ['ubuntu[0-9]*', ]],
     [ 'Linux_64',       'Ubuntu_64',             g_k64,    1, 256, ['ubuntu[0-9]*-64', ]],
     [ 'Linux',          'ArchLinux',             g_k32,    1, 256, ['arch[0-9]*', ]],
