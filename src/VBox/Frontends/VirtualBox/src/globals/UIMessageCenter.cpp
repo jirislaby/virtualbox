@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 112908 2026-02-09 15:53:11Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -895,19 +895,6 @@ bool UIMessageCenter::confirmAutomaticCollisionResolve(const QString &strName, c
                              .arg(strName, strGroupName),
                           0 /* auto-confirm id */,
                           tr("Rename"));
-}
-
-void UIMessageCenter::cannotSetGroups(const CMachine &machine) const
-{
-    /* Compose machine name: */
-    QString strName = CMachine(machine).GetName();
-    if (strName.isEmpty())
-        strName = QFileInfo(CMachine(machine).GetSettingsFilePath()).baseName();
-    /* Show the error: */
-    error(0, MessageType_Error,
-          tr("Failed to set groups of the virtual machine <b>%1</b>.")
-             .arg(strName),
-          UIErrorString::formatErrorInfo(machine));
 }
 
 bool UIMessageCenter::confirmMachineItemRemoval(const QStringList &names) const

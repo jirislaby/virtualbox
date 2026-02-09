@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.h 112908 2026-02-09 15:53:11Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.h 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects declarations.
  */
@@ -498,6 +498,10 @@ public:
         /** Notifies about inability to reset machine.
           * @param  comConsole  Brings console trying to reset machine. */
         static void cannotResetMachine(const CConsole &comConsole);
+
+        /** Notifies about inability to set machine groups.
+          * @param  comMachine  Brings the machine to set groups for. */
+        static void cannotSetGroups(const CMachine &comMachine);
     /** @} */
 
     /** @name COM VirtualBox Manager warnings.

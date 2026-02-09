@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.cpp 112908 2026-02-09 15:53:11Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.cpp 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects implementations.
  */
@@ -1269,6 +1269,21 @@ void UINotificationMessage::cannotResetMachine(const CConsole &comConsole)
         QApplication::translate("UIMessageCenter", "Failed to reset the virtual machine "
                                                    "<b>%1</b>.").arg(CConsole(comConsole).GetMachine().GetName()) +
         UIErrorString::formatErrorInfo(comConsole));
+}
+
+/* static */
+void UINotificationMessage::cannotSetGroups(const CMachine &comMachine)
+{
+    QString strName = CMachine(comMachine).GetName();
+    if (strName.isEmpty())
+        strName = QFileInfo(CMachine(comMachine).GetSettingsFilePath()).baseName();
+
+    createMessage(
+        QApplication::translate("UIMessageCenter", "Failed to set groups ..."),
+        QApplication::translate("UIMessageCenter", "Failed to set groups of the virtual "
+                                                   "machine <b>%1</b>.").arg(strName) +
+        UIErrorString::formatErrorInfo(comMachine),
+        0);
 }
 
 /* static */

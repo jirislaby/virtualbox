@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.h 112908 2026-02-09 15:53:11Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.h 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class declaration.
  */
@@ -323,7 +323,6 @@ public:
       * @{ */
         bool confirmAutomaticCollisionResolve(const QString &strName, const QString &strGroupName) const;
         /// @todo move after fixing thread stuff
-        void cannotSetGroups(const CMachine &machine) const;
         bool confirmMachineItemRemoval(const QStringList &names) const;
         int confirmMachineRemoval(const QList<CMachine> &machines) const;
         int confirmCloudMachineRemoval(const QList<CCloudMachine> &machines) const;
