@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 112858 2026-02-06 20:04:09Z klaus.espenlaub@oracle.com $
+# $Id: configure.py 112865 2026-02-09 08:50:52Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 112858 $"
+__revision__ = "$Revision: 112865 $"
 
 import argparse
 import ctypes
@@ -159,7 +159,7 @@ class BuildTarget:
     HAIKU = "haiku";
     UNKNOWN = "unknown";
 # Supported build targets.
-g_aeBuildTargets = [ BuildTarget.LINUX, BuildTarget.WINDOWS, BuildTarget.SOLARIS, BuildTarget.BSD, BuildTarget.HAIKU ];
+g_aeBuildTargets = [ BuildTarget.LINUX, BuildTarget.WINDOWS, BuildTarget.DARWIN, BuildTarget.SOLARIS, BuildTarget.BSD, BuildTarget.HAIKU ];
 
 g_fDebug = False;             # Enables debug mode. For development.
 g_fContOnErr = False;         # Continue on fatal errors.
@@ -3956,7 +3956,7 @@ def main():
     #
     aOsTools = {
         BuildTarget.LINUX:   [ 'pkg-config', 'gcc', 'make', 'xsltproc' ],
-        BuildTarget.DARWIN:  [ 'clang', 'make', 'brew' ],
+        BuildTarget.DARWIN:  [ 'clang', 'make' ],
         BuildTarget.WINDOWS: [ ], # Done via own callbacks in the ToolCheck class down below.
         BuildTarget.SOLARIS: [ 'pkg-config', 'gcc', 'gmake' ]
     };
