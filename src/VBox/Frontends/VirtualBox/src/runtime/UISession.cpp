@@ -1,4 +1,4 @@
-/* $Id: UISession.cpp 112641 2026-01-19 13:59:27Z sergey.dubov@oracle.com $ */
+/* $Id: UISession.cpp 112914 2026-02-10 10:24:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UISession class implementation.
  */
@@ -875,7 +875,7 @@ bool UISession::addEncryptionPassword(const QString &strId, const QString &strPa
     comConsole.AddEncryptionPassword(strId, strPassword, fClearOnSuspend);
     const bool fSuccess = comConsole.isOk();
     if (!fSuccess)
-        msgCenter().cannotAddDiskEncryptionPassword(comConsole);
+        UINotificationMessage::cannotAddDiskEncryptionPassword(comConsole);
     return fSuccess;
 }
 

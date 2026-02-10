@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.h 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.h 112914 2026-02-10 10:24:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects declarations.
  */
@@ -675,6 +675,10 @@ public:
 
     /** @name COM Runtime UI warnings.
       * @{ */
+        /** Notifies about inability to add disk scryption password.
+          * @param  comConsole  Brings console trying to add disk scryption password. */
+        static void cannotAddDiskEncryptionPassword(const CConsole &comConsole);
+
         /** Notifies about inability to attach USB device.
           * @param  comConsole  Brings console USB device belongs to.
           * @param  strDevice   Brings the device name. */

@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.cpp 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.cpp 112914 2026-02-10 10:24:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects implementations.
  */
@@ -1785,6 +1785,16 @@ void UINotificationMessage::cannotRunUnattendedGuestInstall(const CUnattended &c
         QApplication::translate("UIMessageCenter", "Can't run guest install ..."),
         QApplication::translate("UIMessageCenter", "Failed to run unattended guest installation.") +
         UIErrorString::formatErrorInfo(comUnattended));
+}
+
+/* static */
+void UINotificationMessage::cannotAddDiskEncryptionPassword(const CConsole &comConsole)
+{
+    createMessage(
+        QApplication::translate("UIMessageCenter", "Bad password ..."),
+        QApplication::translate("UIMessageCenter", "Bad password or authentication failure.") +
+        UIErrorString::formatErrorInfo(comConsole),
+        0);
 }
 
 /* static */

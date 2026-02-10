@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 112909 2026-02-09 15:55:52Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 112914 2026-02-10 10:24:39Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -633,13 +633,6 @@ bool UIMessageCenter::cannotRemountMedium(const CMachine &machine, const UIMediu
           strMessage.arg(medium.isHostDrive() ? medium.name() : medium.location(), CMachine(machine).GetName()),
           UIErrorString::formatErrorInfo(machine));
     return false;
-}
-
-void UIMessageCenter::cannotAddDiskEncryptionPassword(const CConsole &console)
-{
-    error(0, MessageType_Error,
-          tr("Bad password or authentication failure."),
-          UIErrorString::formatErrorInfo(console));
 }
 
 bool UIMessageCenter::confirmResetMachine(const QString &strNames) const
