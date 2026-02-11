@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 112936 2026-02-11 10:55:55Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 112944 2026-02-11 12:40:26Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -63,6 +63,7 @@
 #define LNX_SYSCALL_EVENTFD2          290
 
 //#define VFIO_PCI_MAP_MMIO_INTO_GUEST 1
+
 
 /*********************************************************************************************************************************
 *   Structures and Typedefs                                                                                                      *
