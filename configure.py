@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 112961 2026-02-11 16:46:20Z andreas.loeffler@oracle.com $
+# $Id: configure.py 112962 2026-02-11 16:49:36Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 112961 $"
+__revision__ = "$Revision: 112962 $"
 
 import argparse
 import ctypes
@@ -3281,7 +3281,8 @@ g_aoLibs = [
     LibraryCheck("libslirp", [ "slirp/libslirp.h", "slirp/libslirp-version.h" ], [ "libslirp" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
                  sCode = '#include <slirp/libslirp.h>\n#include <slirp/libslirp-version.h>\nint main() { printf("%d.%d.%d", SLIRP_MAJOR_VERSION, SLIRP_MINOR_VERSION, SLIRP_MICRO_VERSION); return 0; }\n'),
     LibraryCheck("libssh", [ "libssh/libssh.h" ], [ "libssh" ], aeTargets = [ BuildTarget.DARWIN, BuildTarget.LINUX, BuildTarget.WINDOWS ], fUseInTree = True,
-                 sCode = '#include <libssh/libssh.h>\n#include <libssh/libssh_version.h>\nint main() { printf("%d.%d.%d", LIBSSH_VERSION_MAJOR, LIBSSH_VERSION_MINOR, LIBSSH_VERSION_MICRO); return 0; }\n'),
+                 sCode = '#include <libssh/libssh.h>\n#include <libssh/libssh_version.h>\nint main() { printf("%d.%d.%d", LIBSSH_VERSION_MAJOR, LIBSSH_VERSION_MINOR, LIBSSH_VERSION_MICRO); return 0; }\n',
+                 dictDefinesToSetIfFailed = { 'VBOX_WITH_LIBSSH' : '' }),
     LibraryCheck("libtpms", [ "libtpms/tpm_library.h" ], [ "libtpms" ], aeTargets = [ BuildTarget.ANY ], fUseInTree = True,
                  sCode = '#include <libtpms/tpm_library.h>\nint main() { printf("%d.%d.%d", TPM_LIBRARY_VER_MAJOR, TPM_LIBRARY_VER_MINOR, TPM_LIBRARY_VER_MICRO); return 0; }\n'),
     LibraryCheck("libvncserver", [ "rfb/rfb.h", "rfb/rfbclient.h" ], [ "libvncserver" ], aeTargets = [ BuildTarget.LINUX, BuildTarget.SOLARIS ],
