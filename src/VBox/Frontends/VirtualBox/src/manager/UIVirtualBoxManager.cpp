@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.cpp 112815 2026-02-04 12:17:52Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxManager.cpp 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class implementation.
  */
@@ -887,6 +887,11 @@ void UIVirtualBoxManager::sltHandleOpenUrlCall(QList<QUrl> list /* = QList<QUrl>
 
 void UIVirtualBoxManager::sltCheckUSBAccesibility()
 {
+#ifdef RT_OS_LINUX
+    /* Make sure no wrong USB mounted: */
+    UICommon::checkForWrongUSBMounted();
+#endif
+
     CHost comHost = gpGlobalSession->host();
     if (!comHost.isOk())
         return;

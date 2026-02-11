@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.cpp 112918 2026-02-10 11:40:49Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.cpp 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects implementations.
  */
@@ -141,6 +141,19 @@ void UINotificationMessage::remindAboutExperimentalBuild()
         QApplication::translate("UIMessageCenter", "You are running an EXPERIMENTAL build of VirtualBox. "
                                                    "This version is not suitable for production use."));
 }
+
+#ifdef RT_OS_LINUX
+/* static */
+void UINotificationMessage::warnAboutWrongUSBMounted()
+{
+    createMessage(QApplication::translate("UIMessageCenter", "USBFS filesystem failure ..."),
+                  QApplication::translate("UIMessageCenter", "You seem to have the USBFS filesystem mounted at "
+                                                             "/sys/bus/usb/drivers.  We strongly recommend that you change this, "
+                                                             "as it is a severe mis-configuration of your system which could "
+                                                             "cause USB devices to fail in unexpected ways."),
+                  "warnAboutWrongUSBMounted");
+}
+#endif /* RT_OS_LINUX */
 
 /* static */
 void UINotificationMessage::warnAboutInvalidEncryptionPassword(const QString &strPasswordId,

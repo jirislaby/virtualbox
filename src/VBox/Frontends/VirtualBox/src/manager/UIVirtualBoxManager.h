@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.h 112815 2026-02-04 12:17:52Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxManager.h 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class declaration.
  */
@@ -140,7 +140,7 @@ private slots:
         /** Handles call to open a @a list of URLs. */
         void sltHandleOpenUrlCall(QList<QUrl> list = QList<QUrl>());
 
-        /** Checks if USB device list can be enumerated and host produces any warning during enumeration. */
+        /** Checks various USB stuff. */
         void sltCheckUSBAccesibility();
 
         /** Handles signal about Chooser-pane selection change.  */

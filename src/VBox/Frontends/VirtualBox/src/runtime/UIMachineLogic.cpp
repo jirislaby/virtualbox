@@ -1,4 +1,4 @@
-/* $Id: UIMachineLogic.cpp 112767 2026-01-30 13:33:32Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineLogic.cpp 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineLogic class implementation.
  */
@@ -389,6 +389,10 @@ void UIMachineLogic::sltHandleMachineInitialized()
     sltAdditionsStateChanged();
     sltMouseCapabilityChanged();
     checkUnattendedLeftOvers();
+#ifdef RT_OS_LINUX
+    /* Make sure no wrong USB mounted: */
+    UICommon::checkForWrongUSBMounted();
+#endif
 }
 
 void UIMachineLogic::sltChangeVisualStateToNormal()

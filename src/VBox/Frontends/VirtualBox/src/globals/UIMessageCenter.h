@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.h 112918 2026-02-10 11:40:49Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.h 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class declaration.
  */
@@ -258,10 +258,6 @@ public:
         void cannotInitCOM(HRESULT rc) const;
 
         void cannotHandleRuntimeOption(const QString &strOption) const;
-
-#ifdef RT_OS_LINUX
-        void warnAboutWrongUSBMounted() const;
-#endif
 
         void cannotStartSelector() const;
         void cannotStartRuntime() const;

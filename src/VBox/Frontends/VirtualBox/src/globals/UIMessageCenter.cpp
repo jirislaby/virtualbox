@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 112918 2026-02-10 11:40:49Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -465,17 +465,6 @@ void UIMessageCenter::cannotHandleRuntimeOption(const QString &strOption) const
           tr("<b>%1</b> is an option for the VirtualBox VM runner (VirtualBoxVM) application, not the VirtualBox Manager.")
              .arg(strOption));
 }
-
-#ifdef RT_OS_LINUX
-void UIMessageCenter::warnAboutWrongUSBMounted() const
-{
-    alert(0, MessageType_Warning,
-          tr("You seem to have the USBFS filesystem mounted at /sys/bus/usb/drivers. "
-             "We strongly recommend that you change this, as it is a severe mis-configuration of "
-             "your system which could cause USB devices to fail in unexpected ways."),
-          "warnAboutWrongUSBMounted");
-}
-#endif /* RT_OS_LINUX */
 
 void UIMessageCenter::cannotStartSelector() const
 {

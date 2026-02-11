@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjects.h 112918 2026-02-10 11:40:49Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjects.h 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationObjects declarations.
  */
@@ -108,6 +108,12 @@ public:
         static void remindAboutBetaBuild();
         /** Reminds about BETA build. */
         static void remindAboutExperimentalBuild();
+
+#ifdef RT_OS_LINUX
+        /** Notifies about wrong USB mounted. */
+        static void warnAboutWrongUSBMounted();
+#endif
+
         /** Notifies about invalid encryption password.
           * @param  strPasswordId  Brings password ID. */
         static void warnAboutInvalidEncryptionPassword(const QString &strPasswordId,
