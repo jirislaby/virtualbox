@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 112861 2026-02-06 21:17:47Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 112936 2026-02-11 10:55:55Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -39,6 +39,7 @@
 #include <VBox/vmm/pdmpci.h>
 #include <VBox/vmm/pdmpcidev.h>
 #include <iprt/assert.h>
+#include <iprt/mem.h>
 #include <iprt/string.h>
 #include <iprt/errcore.h>
 
@@ -61,11 +62,15 @@
 /** eventfd2() syscall for the interrupt handling. */
 #define LNX_SYSCALL_EVENTFD2          290
 
+//#define VFIO_PCI_MAP_MMIO_INTO_GUEST 1
 
 /*********************************************************************************************************************************
 *   Structures and Typedefs                                                                                                      *
 *********************************************************************************************************************************/
 
+/**
+ * A single PCI BAR.
+ */
 typedef struct VFIOPCIBAR
 {
     /** Region type, 0 - disabled, 1 - PIO, 2 - MMIO. */
@@ -85,11 +90,17 @@ typedef struct VFIOPCIBAR
         IOMIOPORTHANDLE hIoPort;
         /** MMIO region. */
         IOMMMIOHANDLE   hMmio;
+        /** MMIO2 region. */
+        PGMMMIO2HANDLE  hMmio2;
     } hnd;
 } VFIOPCIBAR;
 typedef VFIOPCIBAR *PVFIOPCIBAR;
 typedef const VFIOPCIBAR *PCVFIOPCIBAR;
 
+
+/**
+ * Passed through VFIO PCI device instance.
+ */
 typedef struct VFIOPCI
 {
     /** Pointer to the device instance. */
@@ -112,10 +123,33 @@ typedef struct VFIOPCI
     /** The PCI BAR information. */
     VFIOPCIBAR           aBars[VBOX_PCI_NUM_REGIONS];
 
+    /** Flag whether VGA capabilities are exposed. */
+    bool                 fVga;
+    /** The start offset of the VGA region. */
+    uint64_t             offVga;
+    /** The legacy I/O port range from 0x3b0 - 0x3bb. */
+    IOMIOPORTHANDLE      hVgaIoPort1;
+    /** The legacy I/O port range from 0x3c0 - 0x3df. */
+    IOMIOPORTHANDLE      hVgaIoPort2;
+    /** The legacy MMIO range from 0xa0000 - 0xbffff*/
+    IOMMMIOHANDLE        hVgaMmio;
+
+    /** ROM region start offset. */
+    uint64_t             offRom;
+    /** Size of the ROM region. */
+    size_t               cbRom;
+    /** Pointer to the ROM region memory. */
+    void                 *pvRom;
+    /** ROM region handle. */
+    PGMMMIO2HANDLE       hRom;
+
     /** The poll structure for the interrupts. */
     struct pollfd        aIrqFds[2];
 
     PPDMTHREAD           pThrdIrq;
+
+    /** Flag whether the guest RAM was mapped to the IOMMU. */
+    bool                 fGuestRamMapped;
 } VFIOPCI;
 /** Pointer to the raw PCI instance data. */
 typedef VFIOPCI *PVFIOPCI;
@@ -226,8 +260,12 @@ DECLINLINE(int) pciVfioCfgSpaceWriteU64(PVFIOPCI pThis, uint32_t offReg, uint64_
  */
 static DECLCALLBACK(VBOXSTRICTRC) pciVfioPioWrite(PPDMDEVINS pDevIns, void *pvUser, RTIOPORT offPort, uint32_t u32, unsigned cb)
 {
-    RT_NOREF(pDevIns, pvUser, offPort, u32, cb);
-    AssertMsgFailed(("Should not happen\n"));
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+    PCVFIOPCIBAR pBar = (PCVFIOPCIBAR)pvUser;
+    ssize_t cbWritten = pwrite(pThis->iFdVfio, &u32, cb, pBar->u.offPio + offPort);
+    if (cbWritten != cb)
+        return RTErrConvertFromErrno(errno);
+
     return VINF_SUCCESS;
 }
 
@@ -237,13 +275,17 @@ static DECLCALLBACK(VBOXSTRICTRC) pciVfioPioWrite(PPDMDEVINS pDevIns, void *pvUs
  */
 static DECLCALLBACK(VBOXSTRICTRC) pciVfioPioRead(PPDMDEVINS pDevIns, void *pvUser, RTIOPORT offPort, uint32_t *pu32, unsigned cb)
 {
-    *pu32 = 0;
-    RT_NOREF(pDevIns, pvUser, offPort, cb);
-    AssertMsgFailed(("Should not happen\n"));
-    return VERR_IOM_IOPORT_UNUSED;
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+    PCVFIOPCIBAR pBar = (PCVFIOPCIBAR)pvUser;
+    ssize_t cbRead = pread(pThis->iFdVfio, pu32, cb, pBar->u.offPio + offPort);
+    if (cbRead != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
 }
 
 
+#ifndef VFIO_PCI_MAP_MMIO_INTO_GUEST
 /**
  * @callback_method_impl{FNIOMMMIONEWREAD}
  */
@@ -292,6 +334,7 @@ static DECLCALLBACK(VBOXSTRICTRC) pciVfioMmioWrite(PPDMDEVINS pDevIns, void *pvU
 
     return VINF_SUCCESS;
 }
+#endif
 
 
 DECLINLINE(int) pciVfioQueryRegionInfo(PVFIOPCI pThis, uint32_t uRegion, struct vfio_region_info *pRegionInfo)
@@ -330,10 +373,28 @@ static int pciVfioSetupBar(PVFIOPCI pThis, PPDMDEVINS pDevIns, PPDMPCIDEV pPciDe
     if (RT_FAILURE(rc))
         return rc;
 
-    if (RegionInfo.flags)
+    if (   RegionInfo.flags
+        && RegionInfo.size)
     {
-        if (RegionInfo.flags & VFIO_REGION_INFO_FLAG_MMAP)
+        uint32_t u32PciBar;
+        rc = pciVfioCfgSpaceReadU32(pThis, VBOX_PCI_BASE_ADDRESS_0 + (uRegion * sizeof(uint32_t)), &u32PciBar);
+        if (RT_FAILURE(rc))
+            return rc;
+
+        if (u32PciBar & RT_BIT_32(0))
         {
+            /* PIO. */
+            pThis->aBars[uRegion].bType    = 1;
+            pThis->aBars[uRegion].u.offPio = RegionInfo.offset;
+
+            rc = PDMDevHlpPCIIORegionCreateIo(pDevIns, uRegion, RegionInfo.size,
+                                              pciVfioPioWrite, pciVfioPioRead, &pThis->aBars[uRegion],
+                                              "PIO", NULL /*paExtDescs*/, &pThis->aBars[uRegion].hnd.hIoPort);
+            AssertRCReturn(rc, PDMDEV_SET_ERROR(pDevIns, rc, N_("Cannot register PCI I/O region")));
+        }
+        else
+        {
+            Assert(RegionInfo.flags & VFIO_REGION_INFO_FLAG_MMAP);
             int fProt =   ((RegionInfo.flags & VFIO_REGION_INFO_FLAG_READ)  ? PROT_READ  : 0)
                         | ((RegionInfo.flags & VFIO_REGION_INFO_FLAG_WRITE) ? PROT_WRITE : 0);
             pThis->aBars[uRegion].bType    = 2;
@@ -343,32 +404,232 @@ static int pciVfioSetupBar(PVFIOPCI pThis, PPDMDEVINS pDevIns, PPDMPCIDEV pPciDe
                                            N_("Mapping BAR%u at offset %#RX64 with size %RX64 failed with %d"),
                                            uRegion, RegionInfo.offset, RegionInfo.size, errno);
 
+#ifndef VFIO_PCI_MAP_MMIO_INTO_GUEST
             rc = PDMDevHlpMmioCreate(pDevIns, RegionInfo.size, pPciDev, uRegion /*iPciRegion*/,
                                      pciVfioMmioWrite, pciVfioMmioRead, &pThis->aBars[uRegion],
                                      IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU, "MMIO",
                                      &pThis->aBars[uRegion].hnd.hMmio);
             AssertLogRelRCReturn(rc, rc);
+#endif
 
-            /** @todo properly detect 64-bit and prefetchable BARs. */
-            rc = PDMDevHlpPCIIORegionRegisterMmioEx(pDevIns, pPciDev, uRegion, RegionInfo.size,
-                                                    (PCIADDRESSSPACE)(PCI_ADDRESS_SPACE_MEM | PCI_ADDRESS_SPACE_BAR64),
+            uint32_t enmAddrSpace = PCI_ADDRESS_SPACE_MEM;
+            if ((u32PciBar & (RT_BIT_32(2) | RT_BIT_32(1))) == PCI_ADDRESS_SPACE_BAR64)
+                enmAddrSpace |= PCI_ADDRESS_SPACE_BAR64;
+            if (u32PciBar & PCI_ADDRESS_SPACE_MEM_PREFETCH)
+                enmAddrSpace |= PCI_ADDRESS_SPACE_MEM_PREFETCH;
+#ifndef VFIO_PCI_MAP_MMIO_INTO_GUEST
+            rc = PDMDevHlpPCIIORegionRegisterMmioEx(pDevIns, pPciDev, uRegion, RegionInfo.size, (PCIADDRESSSPACE)enmAddrSpace,
                                                     pThis->aBars[uRegion].hnd.hMmio, NULL);
+#else
+            /** @todo Need the necessary infrastructure in VMM to map MMIo regions into the guest. */
+            RT_NOREF(pPciDev);
+            rc = PDMDevHlpPCIIORegionCreateMmio2Ex(pDevIns, uRegion, RegionInfo.size,
+                                                   (PCIADDRESSSPACE)enmAddrSpace, PGMPHYS_MMIO2_FLAGS_USE_EXISTING_BACKING,
+                                                   NULL, "MMIO", (void **)&pThis->aBars[uRegion].u.pvMmio, &pThis->aBars[uRegion].hnd.hMmio2);
+#endif
             AssertLogRelRCReturn(rc, rc);
-        }
-        else
-        {
-            /* This assumes PIO. */
-            pThis->aBars[uRegion].bType    = 1;
-            pThis->aBars[uRegion].u.offPio = RegionInfo.offset;
-
-            rc = PDMDevHlpPCIIORegionCreateIo(pDevIns, uRegion, RegionInfo.size,
-                                              pciVfioPioWrite, pciVfioPioRead, NULL /*pvUser*/,
-                                              "PIO", NULL /*paExtDescs*/, &pThis->aBars[uRegion].hnd.hIoPort);
-            AssertRCReturn(rc, PDMDEV_SET_ERROR(pDevIns, rc, N_("Cannot register PCI I/O region")));
         }
     }
     else /* Not available. */
         Assert(RegionInfo.size == 0);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNIOMIOPORTNEWOUT}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) pciVfioVgaPioWrite(PPDMDEVINS pDevIns, void *pvUser, RTIOPORT offPort, uint32_t u32, unsigned cb)
+{
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+    PCVFIOPCIBAR pBar = (PCVFIOPCIBAR)pvUser;
+    ssize_t cbWritten = pwrite(pThis->iFdVfio, &u32, cb, pBar->u.offPio + offPort);
+    if (cbWritten != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNIOMIOPORTNEWIN}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) pciVfioVgaPioRead(PPDMDEVINS pDevIns, void *pvUser, RTIOPORT offPort, uint32_t *pu32, unsigned cb)
+{
+    RT_NOREF(pvUser);
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+
+    ssize_t cbRead = pread(pThis->iFdVfio, pu32, cb, pThis->offVga + offPort);
+    if (cbRead != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNIOMMMIONEWREAD}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) pciVfioVgaMmioRead(PPDMDEVINS pDevIns, void *pvUser, RTGCPHYS off, void *pv, unsigned cb)
+{
+    RT_NOREF(pvUser);
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+
+    ssize_t cbRead = pread(pThis->iFdVfio, pv, cb, pThis->offVga + off);
+    if (cbRead != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNIOMMMIONEWWRITE}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) pciVfioVgaMmioWrite(PPDMDEVINS pDevIns, void *pvUser, RTGCPHYS off, void const *pv, unsigned cb)
+{
+    RT_NOREF(pvUser);
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+
+    ssize_t cbWritten = pwrite(pThis->iFdVfio, pv, cb, pThis->offVga + off);
+    if (cbWritten != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNIOMMMIONEWFILL}
+ */
+static DECLCALLBACK(VBOXSTRICTRC) pciVfioVgaMmioFill(PPDMDEVINS pDevIns, void *pvUser, RTGCPHYS off, uint32_t u32Item, unsigned cbItem, unsigned cItems)
+{
+    RT_NOREF(pvUser);
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+
+    uint8_t abVal[4] = { 0 };
+    for (uint8_t i = 0; i < RT_ELEMENTS(abVal); i++)
+    {
+        abVal[i] = u32Item & 0xff;
+        u32Item >>= 8;
+    }
+
+    ssize_t const cb = (ssize_t)cbItem * cItems;
+    uint8_t *pb = (uint8_t *)RTMemTmpAlloc(cb);
+    if (!pb)
+        return VERR_NO_MEMORY;
+
+    uint8_t *pbCur = pb;
+
+    switch (cbItem)
+    {
+        case 1:
+            for (uint32_t i = 0; i < cItems; i++)
+                *pbCur++ = abVal[0];
+            break;
+        case 2:
+            for (uint32_t i = 0; i < cItems; i++)
+            {
+                pbCur[0] = abVal[0];
+                pbCur[1] = abVal[1];
+                pbCur += 2;
+            }
+            break;
+        case 4:
+            for (uint32_t i = 0; i < cItems; i++)
+            {
+                pbCur[0] = abVal[0];
+                pbCur[1] = abVal[1];
+                pbCur[2] = abVal[2];
+                pbCur[3] = abVal[3];
+                pbCur += 4;
+            }
+            break;
+        default:
+            AssertFailedReturn(VERR_NOT_SUPPORTED);
+    }
+
+    ssize_t cbWritten = pwrite(pThis->iFdVfio, pb, cb, pThis->offVga + off);
+    RTMemTmpFree(pb);
+
+    if (cbWritten != cb)
+        return RTErrConvertFromErrno(errno);
+
+    return VINF_SUCCESS;
+}
+
+
+static int pciVfioSetupVga(PVFIOPCI pThis, PPDMDEVINS pDevIns)
+{
+    struct vfio_region_info RegionInfo; RT_ZERO(RegionInfo);
+    int rc = pciVfioQueryRegionInfo(pThis, VFIO_PCI_VGA_REGION_INDEX, &RegionInfo);
+    if (RT_FAILURE(rc))
+        return rc;
+
+    AssertLogRelMsgReturn(   RegionInfo.flags
+                          && RegionInfo.size,
+                          ("VGA/GPU does not support VFIO_PCI_VGA_REGION_INDEX\n"),
+                          VERR_NOT_SUPPORTED);
+
+    pThis->offVga = RegionInfo.offset;
+
+    /* Register the legacy VGA I/O port and MMIO ranges. */
+    rc = PDMDevHlpIoPortCreateFlagsAndMap(pDevIns, 0x3b0, 0x3bb - 0x3b0 + 1, IOM_IOPORT_F_ABS,
+                                          pciVfioVgaPioWrite, pciVfioVgaPioRead, "VFIO VGA #1",
+                                          NULL /*paExtDescs*/, &pThis->hVgaIoPort1);
+    if (RT_FAILURE(rc))
+        return PDMDEV_SET_ERROR(pDevIns, rc, "Mapping legacy VGA ports 0x3b0 - 0x3bb failed");
+
+    rc = PDMDevHlpIoPortCreateFlagsAndMap(pDevIns, 0x3c0, 0x3df - 0x3c0 + 1, IOM_IOPORT_F_ABS,
+                                          pciVfioVgaPioWrite, pciVfioVgaPioRead, "VFIO VGA #2",
+                                          NULL /*paExtDescs*/, &pThis->hVgaIoPort2);
+    if (RT_FAILURE(rc))
+        return PDMDEV_SET_ERROR(pDevIns, rc, "Mapping legacy VGA ports 0x3b0 - 0x3bb failed");
+
+    /*
+     * The MDA/CGA/EGA/VGA/whatever fixed MMIO area.
+     */
+    rc = PDMDevHlpMmioCreateExAndMap(pDevIns, 0x000a0000, 0x00020000,
+                                     IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU | IOMMMIO_FLAGS_ABS,
+                                     NULL /*pPciDev*/, UINT32_MAX /*iPciRegion*/,
+                                     pciVfioVgaMmioWrite, pciVfioVgaMmioRead, pciVfioVgaMmioFill, NULL /*pvUser*/,
+                                     "VFIO VGA - VGA Video Buffer", &pThis->hVgaMmio);
+    AssertRCReturn(rc, rc);
+
+    return VINF_SUCCESS;
+}
+
+
+static int pciVfioSetupRom(PVFIOPCI pThis, PPDMDEVINS pDevIns)
+{
+    struct vfio_region_info RegionInfo; RT_ZERO(RegionInfo);
+    int rc = pciVfioQueryRegionInfo(pThis, VFIO_PCI_ROM_REGION_INDEX, &RegionInfo);
+    if (RT_FAILURE(rc))
+        return rc;
+
+    /* No ROM, nothing to do. */
+    if (   RegionInfo.flags == 0
+        && RegionInfo.size == 0)
+        return VINF_SUCCESS;
+
+    /** @todo Currently we will map the ROM as MMIO2 region as we lack the necessary
+     * infrastructure to register ROMs for PCI BARs. This is wrong because MMIO2 regions
+     * are mapped read/write. OTOH the guest can only trash the virtual ROM and break itself. */
+
+    pThis->offRom = RegionInfo.offset;
+    pThis->cbRom  = RegionInfo.size;
+
+    rc = PDMDevHlpPCIIORegionCreateMmio2(pDevIns, VBOX_PCI_ROM_SLOT, pThis->cbRom,
+                                         PCI_ADDRESS_SPACE_MEM_PREFETCH, "ROM",
+                                         &pThis->pvRom, &pThis->hRom);
+    AssertLogRelRCReturn(rc, PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                                 N_("Failed to allocate %zu bytes of ROM"), pThis->cbRom));
+
+    ssize_t cbRead = pread(pThis->iFdVfio, pThis->pvRom, pThis->cbRom, pThis->offRom);
+    if (cbRead != (ssize_t)pThis->cbRom)
+        return PDMDevHlpVMSetError(pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
+                                   N_("Failed to read %zu bytes of ROM from the device"), pThis->cbRom);
 
     return VINF_SUCCESS;
 }
@@ -562,6 +823,30 @@ static int pciVfioCfgSpaceSetup(PVFIOPCI pThis, PPDMPCIDEV pPciDev)
 }
 
 
+static int pciVfioMapRegion(PVFIOPCI pThis, RTGCPHYS GCPhysStart, uintptr_t uPtrMapping, size_t cbMapping)
+{
+    struct iommu_ioas_map Map;
+    Map.size       = sizeof(Map);
+    Map.flags      = IOMMU_IOAS_MAP_FIXED_IOVA | IOMMU_IOAS_MAP_WRITEABLE | IOMMU_IOAS_MAP_READABLE;
+    Map.ioas_id    = pThis->idIommuHwpt;
+    Map.__reserved = 0;
+    Map.user_va    = uPtrMapping;
+    Map.length     = cbMapping;
+    Map.iova       = GCPhysStart;
+
+    LogRel(("Mapping GCPhysStart=%RGp uPtrMapping=%p cbMapping=%#zx\n", GCPhysStart, uPtrMapping, cbMapping));
+
+    int rcLnx = ioctl(pThis->iFdIommu, IOMMU_IOAS_MAP, &Map);
+    if (rcLnx == -1)
+    {
+        LogRel(("errno=%d\n", errno));
+        return RTErrConvertFromErrno(errno);
+    }
+
+    return VINF_SUCCESS;
+}
+
+
 /**
  * @callback_method_impl{FNPCICONFIGREAD}
  */
@@ -623,6 +908,77 @@ static DECLCALLBACK(VBOXSTRICTRC) pciVfioConfigWrite(PPDMDEVINS pDevIns, PPDMPCI
     if (uAddress >= VBOX_PCI_BASE_ADDRESS_0 && uAddress < VBOX_PCI_CARDBUS_CIS)
         return VINF_PDM_PCI_DO_DEFAULT;
 
+    /* Map all the guest memory into the IOMMU as soon as the BUSMASTER bit is enabled. */
+    if (   uAddress == VBOX_PCI_COMMAND
+        && (u32Value & RT_BIT(2))
+        && !pThis->fGuestRamMapped)
+    {
+        /** @todo This is a really gross hack because we currently lack
+         * a dedicated interface to get knowledge about guest RAM mappings.
+         * This might also return mappings for stuff not being guest RAM.
+         */
+        RTGCPHYS  GCPhysStart = 0;
+        uintptr_t uPtrMapping = 0;
+        size_t    cbMapping   = 0;
+        for (RTGCPHYS GCPhys = 0; GCPhys < 10 * _1G64; GCPhys += _4K)
+        {
+            void *pv = NULL;
+            PGMPAGEMAPLOCK Lock;
+            int rc = PDMDevHlpPhysGCPhys2CCPtr(pDevIns, GCPhys, 0 /*fFlags*/, &pv, &Lock);
+            if (RT_SUCCESS(rc))
+            {
+                if (cbMapping)
+                {
+                    if (uPtrMapping + cbMapping == (uintptr_t)pv)
+                        cbMapping += _4K;
+                    else
+                    {
+                        rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
+                        if (RT_FAILURE(rc))
+                            LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
+
+                        GCPhysStart = GCPhys;
+                        uPtrMapping = (uintptr_t)pv;
+                        cbMapping = _4K;
+                    }
+                }
+                else
+                {
+                    Assert(!uPtrMapping);
+                    GCPhysStart = GCPhys;
+                    uPtrMapping = (uintptr_t)pv;
+                    cbMapping = _4K;
+                }
+                PDMDevHlpPhysReleasePageMappingLock(pDevIns, &Lock);
+            }
+            else if (cbMapping)
+            {
+                LogRel(("PDMDevHlpPhysGCPhys2CCPtr(,%RGp) -> %Rrc\n", GCPhys, rc));
+                /* Map what we currently have. */
+                Assert(uPtrMapping);
+                rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
+                if (RT_FAILURE(rc))
+                    LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
+                cbMapping   = 0;
+                uPtrMapping = 0;
+                GCPhysStart = GCPhys;
+            }
+        }
+
+        if (cbMapping)
+        {
+            /* Map what we currently have. */
+            Assert(uPtrMapping);
+            int rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
+            if (RT_FAILURE(rc))
+                LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
+            cbMapping   = 0;
+            uPtrMapping = 0;
+        }
+
+        pThis->fGuestRamMapped = true;
+    }
+
 #if 1
     switch (cb)
     {
@@ -679,9 +1035,8 @@ static DECLCALLBACK(int) pciVfioIrqPoller(PPDMDEVINS pDevIns, PPDMTHREAD pThread
                     pThis->aIrqFds[i].revents = 0;
                     uint64_t u64;
                     ssize_t cb = read(pThis->aIrqFds[i].fd, &u64, sizeof(u64));
-                    Assert(cb == sizeof(u64));
+                    Assert(cb == sizeof(u64)); RT_NOREF(cb);
 
-                    LogRel(("VFIO: interrupt for i=%u\n", i));
                     PDMDevHlpPCISetIrq(pDevIns, 0, 1);
 
                     /** @todo The interrupt seems to be masked and we would need a mechanism
@@ -736,101 +1091,15 @@ static DECLCALLBACK(int) pciVfioIrqPollerWakeup(PPDMDEVINS pDevIns, PPDMTHREAD p
 }
 
 
-static int pciVfioMapRegion(PVFIOPCI pThis, RTGCPHYS GCPhysStart, uintptr_t uPtrMapping, size_t cbMapping)
-{
-    struct iommu_ioas_map Map;
-    Map.size       = sizeof(Map);
-    Map.flags      = IOMMU_IOAS_MAP_FIXED_IOVA | IOMMU_IOAS_MAP_WRITEABLE | IOMMU_IOAS_MAP_READABLE;
-    Map.ioas_id    = pThis->idIommuHwpt;
-    Map.__reserved = 0;
-    Map.user_va    = uPtrMapping;
-    Map.length     = cbMapping;
-    Map.iova       = GCPhysStart;
-
-    LogRel(("Mapping GCPhysStart=%RGp uPtrMapping=%p cbMapping=%#zx\n", GCPhysStart, uPtrMapping, cbMapping));
-
-    int rcLnx = ioctl(pThis->iFdIommu, IOMMU_IOAS_MAP, &Map);
-    if (rcLnx == -1)
-    {
-        LogRel(("errno=%d\n", errno));
-        return RTErrConvertFromErrno(errno);
-    }
-
-    return VINF_SUCCESS;
-}
-
-
 /**
- * @interface_method_impl{PDMDEVREG,pfnPowerOn}
+ * @interface_method_impl{PDMDEVREG,pfnReset}
  */
-static DECLCALLBACK(void) pciVfioPowerOn(PPDMDEVINS pDevIns)
+static DECLCALLBACK(void) pciVfioReset(PPDMDEVINS pDevIns)
 {
     PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
 
-    /** @todo This is a really gross hack because we currently lack
-     * a dedicated interface to get knowledge about guest RAM mappings.
-     * This might also return mappings for stuff not being guest RAM,
-     * and it only works in simple NEM mode currently, where everything is
-     * pre-allocated and guest pages don't change their mapping.
-     */
-    RTGCPHYS  GCPhysStart = 0;
-    uintptr_t uPtrMapping = 0;
-    size_t    cbMapping   = 0;
-    for (RTGCPHYS GCPhys = 0; GCPhys < 10 * _1G64; GCPhys += _4K)
-    {
-        void *pv = NULL;
-        PGMPAGEMAPLOCK Lock;
-        int rc = PDMDevHlpPhysGCPhys2CCPtr(pDevIns, GCPhys, 0 /*fFlags*/, &pv, &Lock);
-        if (RT_SUCCESS(rc))
-        {
-            if (cbMapping)
-            {
-                if (uPtrMapping + cbMapping == (uintptr_t)pv)
-                    cbMapping += _4K;
-                else
-                {
-                    rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
-                    if (RT_FAILURE(rc))
-                        LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
-
-                    GCPhysStart = GCPhys;
-                    uPtrMapping = (uintptr_t)pv;
-                    cbMapping = _4K;
-                }
-            }
-            else
-            {
-                Assert(!uPtrMapping);
-                GCPhysStart = GCPhys;
-                uPtrMapping = (uintptr_t)pv;
-                cbMapping = _4K;
-            }
-            PDMDevHlpPhysReleasePageMappingLock(pDevIns, &Lock);
-        }
-        else if (cbMapping)
-        {
-            LogRel(("PDMDevHlpPhysGCPhys2CCPtr(,%RGp) -> %Rrc\n", GCPhys, rc));
-            /* Map what we currently have. */
-            Assert(uPtrMapping);
-            rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
-            if (RT_FAILURE(rc))
-                LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
-            cbMapping   = 0;
-            uPtrMapping = 0;
-            GCPhysStart = GCPhys;
-        }
-    }
-
-    if (cbMapping)
-    {
-        /* Map what we currently have. */
-        Assert(uPtrMapping);
-        int rc = pciVfioMapRegion(pThis, GCPhysStart, uPtrMapping, cbMapping);
-        if (RT_FAILURE(rc))
-            LogRel(("Mapping %RGp/%zu failed with %Rrc\n", GCPhysStart, cbMapping, rc));
-        cbMapping   = 0;
-        uPtrMapping = 0;
-    }
+    int rcLnx = ioctl(pThis->iFdVfio, VFIO_DEVICE_RESET, NULL);
+    AssertLogRelMsg(!rcLnx, ("VFIO#%d: Failed to reset device %d\n", pThis->iInstance, errno));
 }
 
 
@@ -848,13 +1117,13 @@ static DECLCALLBACK(int) pciVfioDestruct(PPDMDEVINS pDevIns)
         VfioDetach.argsz   = sizeof(VfioDetach);
         VfioDetach.flags   = 0;
         int rcLnx = ioctl(pThis->iFdVfio, VFIO_DEVICE_DETACH_IOMMUFD_PT, &VfioDetach);
-        AssertLogRel(("VFIO#%d: Failed to detach IOMMU page table with %d\n", pThis->iInstance, errno));
+        AssertLogRelMsg(!rcLnx, ("VFIO#%d: Failed to detach IOMMU page table with %d\n", pThis->iInstance, errno));
 
         struct iommu_destroy HwptDestroy;
         HwptDestroy.size = sizeof(HwptDestroy);
         HwptDestroy.id   = pThis->idIommuHwpt;
         rcLnx = ioctl(pThis->iFdIommu, IOMMU_DESTROY, &HwptDestroy);
-        AssertLogRel(("VFIO#%d: Failed to destroy I/O address space with %d\n", pThis->iInstance, errno));
+        AssertLogRelMsg(!rcLnx, ("VFIO#%d: Failed to destroy I/O address space with %d\n", pThis->iInstance, errno));
     }
 
     if (pThis->iFdIommu != -1)
@@ -883,6 +1152,11 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
     pThis->iInstance = iInstance;
     pThis->iFdIommu  = -1;
     pThis->iFdVfio   = -1;
+    pThis->fVga      = false;
+
+    int rc = PDMDevHlpSetDeviceCritSect(pDevIns, PDMDevHlpCritSectGetNop(pDevIns));
+    if (RT_FAILURE(rc))
+        return rc;
 
     /*
      * Validate configuration.
@@ -890,12 +1164,19 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
     if (!pHlp->pfnCFGMAreValuesValid(pCfg,
                                      "VfioPath\0"
                                      "IommuPath\0"
+                                     "ExposeVga\0"
                                     ))
         return VERR_PDM_DEVINS_UNKNOWN_CFG_VALUES;
 
     /* Query configuration. */
+    bool fVga = false;
+    rc = pHlp->pfnCFGMQueryBoolDef(pCfg, "ExposeVga", &fVga, false);
+    if (RT_FAILURE(rc))
+        return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                   N_("Configuration error: Querying \"ExposeVga\" failed"));
+
     char szPath[RTPATH_MAX];
-    int rc = pHlp->pfnCFGMQueryString(pCfg, "VfioPath", &szPath[0], sizeof(szPath));
+    rc = pHlp->pfnCFGMQueryString(pCfg, "VfioPath", &szPath[0], sizeof(szPath));
     if (RT_FAILURE(rc))
         return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
                                    N_("Configuration error: Querying \"VfioPath\" failed"));
@@ -1012,7 +1293,22 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
             return rc;
     }
 
-    /** @todo ROM BAR and VGA region index. */
+    uint8_t bClassBase = PDMPciDevGetByte(pPciDev, VBOX_PCI_CLASS_BASE);
+    uint8_t bClassSub  = PDMPciDevGetByte(pPciDev, VBOX_PCI_CLASS_SUB);
+    if (   fVga
+        && bClassBase == VBOX_PCI_CLASS_DISPLAY
+        && bClassSub  == VBOX_PCI_SUB_DISPLAY_VGA)
+    {
+        rc = pciVfioSetupVga(pThis, pDevIns);
+        if (RT_FAILURE(rc))
+            return rc;
+    }
+    else
+        pThis->fVga = false;
+
+    rc = pciVfioSetupRom(pThis, pDevIns);
+    if (RT_FAILURE(rc))
+        return rc;
 
     /* Set up interrupts. */
     static uint32_t s_aVfioIrqs[] =
@@ -1068,8 +1364,8 @@ const PDMDEVREG g_DevicePciVfio =
     /* .pfnDestruct = */            pciVfioDestruct,
     /* .pfnRelocate = */            NULL,
     /* .pfnMemSetup = */            NULL,
-    /* .pfnPowerOn = */             pciVfioPowerOn,
-    /* .pfnReset = */               NULL, //pciVfioReset,
+    /* .pfnPowerOn = */             NULL,
+    /* .pfnReset = */               pciVfioReset,
     /* .pfnSuspend = */             NULL,
     /* .pfnResume = */              NULL,
     /* .pfnAttach = */              NULL,
