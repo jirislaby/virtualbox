@@ -1,4 +1,4 @@
-/* $Id: UINotificationCenter.cpp 113010 2026-02-13 14:49:33Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationCenter.cpp 113011 2026-02-13 14:53:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationCenter class implementation.
  */
@@ -986,7 +986,7 @@ void UINotificationCenter::createItem(const QUuid &uId)
     }
 
     /* Create item itself: */
-    UINotificationObjectItem *pItem = UINotificationItem::create(this, m_pModel->objectById(uId), iWidthHint);
+    UINotificationObjectItem *pItem = UINotificationItem::create(this, m_pModel->objectById(uId), iWidthHint, m_fExtendedMode);
     m_items[uId] = pItem;
     m_pLayoutItems->insertWidget(m_enmOrder == Qt::AscendingOrder ? -1 : 0, pItem);
 }

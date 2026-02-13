@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113010 2026-02-13 14:49:33Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113011 2026-02-13 14:53:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -60,10 +60,12 @@ public:
 
     /** Constructs notification-object item, passing @a pParent to the base-class.
       * @param  pObject     Brings the notification-object this item created for.
-      * @param  iWidthHint  Brings the width hint this item could use to adjust details label size. */
+      * @param  iWidthHint  Brings the width hint this item could use to adjust details label size.
+      * @param  fToggled    Brings whether notification details pane should be initially toggled. */
     UINotificationObjectItem(QWidget *pParent,
                              UINotificationObject *pObject,
-                             int iWidthHint);
+                             int iWidthHint,
+                             bool fToggled = false);
 
 protected:
 
@@ -77,6 +79,8 @@ protected:
     UINotificationObject *m_pObject;
     /** Holds the width hint this item could use to adjust details label size. */
     int                   m_iWidthHint;
+    /** Holds whether item is toggled. */
+    bool                  m_fToggled;
 
     /** Holds the main layout instance. */
     QVBoxLayout     *m_pLayoutMain;
@@ -95,8 +99,6 @@ protected:
 
     /** Holds whether item is hovered. */
     bool  m_fHovered;
-    /** Holds whether item is toggled. */
-    bool  m_fToggled;
 
 private slots:
 
@@ -190,7 +192,8 @@ namespace UINotificationItem
       * @param  iWidthHint  Brings the width hint for the newly created item. */
     UINotificationObjectItem *create(QWidget *pParent,
                                      UINotificationObject *pObject,
-                                     int iWidthHint);
+                                     int iWidthHint,
+                                     bool ftoggled);
 }
 
 #endif /* !FEQT_INCLUDED_SRC_notificationcenter_UINotificationObjectItem_h */

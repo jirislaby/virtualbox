@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113010 2026-02-13 14:49:33Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113011 2026-02-13 14:53:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -53,10 +53,12 @@
 
 UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
                                                    UINotificationObject *pObject,
-                                                   int iWidthHint)
+                                                   int iWidthHint,
+                                                   bool fToggled /* = false */)
     : QWidget(pParent)
     , m_pObject(pObject)
     , m_iWidthHint(iWidthHint)
+    , m_fToggled(fToggled)
     , m_pLayoutMain(0)
     , m_pLayoutUpper(0)
     , m_pLabelName(0)
@@ -65,7 +67,6 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
     , m_pButtonClose(0)
     , m_pLabelDetails(0)
     , m_fHovered(false)
-    , m_fToggled(false)
 {
     /* Make sure item is opaque. */
     setAutoFillBackground(true);
@@ -135,7 +136,6 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
             QFont myFont = m_pLabelDetails->font();
             myFont.setPointSize(myFont.pointSize() - 1);
             m_pLabelDetails->setBrowserFont(myFont);
-            m_pLabelDetails->setVisible(false);
             int iHint = m_pLabelName->minimumSizeHint().width();
             if (m_pButtonHelp)
                 iHint += m_pLayoutUpper->spacing() + m_pButtonHelp->minimumSizeHint().width();
@@ -146,6 +146,7 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
             iHint = qMax(iHint, iWidthHint);
             m_pLabelDetails->setMinimumTextWidth(iHint);
             m_pLabelDetails->setText(m_pObject->details());
+            m_pLabelDetails->setVisible(m_fToggled && !m_pLabelDetails->text().isEmpty());
 
             m_pLayoutMain->addWidget(m_pLabelDetails);
         }
@@ -197,7 +198,7 @@ bool UINotificationObjectItem::event(QEvent *pEvent)
         case QEvent::MouseButtonRelease:
         {
             m_fToggled = !m_fToggled;
-            m_pLabelDetails->setVisible(m_fToggled);
+            m_pLabelDetails->setVisible(m_fToggled && !m_pLabelDetails->text().isEmpty());
             break;
         }
         default:
@@ -490,7 +491,8 @@ void UINotificationDownloaderItem::updateDetails()
 
 UINotificationObjectItem *UINotificationItem::create(QWidget *pParent,
                                                      UINotificationObject *pObject,
-                                                     int iWidthHint)
+                                                     int iWidthHint,
+                                                     bool fToggled)
 {
     /* Handle known types: */
     if (pObject->inherits("UINotificationProgress"))
@@ -500,5 +502,5 @@ UINotificationObjectItem *UINotificationItem::create(QWidget *pParent,
         return new UINotificationDownloaderItem(pParent, static_cast<UINotificationDownloader*>(pObject), iWidthHint);
 #endif
     /* Handle defaults: */
-    return new UINotificationObjectItem(pParent, pObject, iWidthHint);
+    return new UINotificationObjectItem(pParent, pObject, iWidthHint, fToggled);
 }
