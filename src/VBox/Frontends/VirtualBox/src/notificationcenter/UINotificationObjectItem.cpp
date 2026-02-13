@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113011 2026-02-13 14:53:40Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113013 2026-02-13 15:02:32Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -57,7 +57,6 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
                                                    bool fToggled /* = false */)
     : QWidget(pParent)
     , m_pObject(pObject)
-    , m_iWidthHint(iWidthHint)
     , m_fToggled(fToggled)
     , m_pLayoutMain(0)
     , m_pLayoutUpper(0)
@@ -122,15 +121,14 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
         m_pLabelDetails = new QIRichTextLabel(this);
         if (m_pLabelDetails)
         {
-            /* Calculate width hint (if it was passed): */
-            int iWidthHint = -1;
-            if (m_iWidthHint > 0)
+            /* Adjust width hint (if it was passed): */
+            if (iWidthHint > 0)
             {
                 /* Acquire layout margins: */
                 int iL, iT, iR, iB;
                 m_pLayoutMain->getContentsMargins(&iL, &iT, &iR, &iB);
-                /* Calculate width hint: */
-                iWidthHint = m_iWidthHint - iL - iR;
+                /* Adjust width hint: */
+                iWidthHint = iWidthHint - iL - iR;
             }
 
             QFont myFont = m_pLabelDetails->font();

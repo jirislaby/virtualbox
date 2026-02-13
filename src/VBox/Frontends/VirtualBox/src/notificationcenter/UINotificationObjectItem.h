@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113011 2026-02-13 14:53:40Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113013 2026-02-13 15:02:32Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -77,8 +77,6 @@ protected:
 
     /** Holds the notification-object this item created for. */
     UINotificationObject *m_pObject;
-    /** Holds the width hint this item could use to adjust details label size. */
-    int                   m_iWidthHint;
     /** Holds whether item is toggled. */
     bool                  m_fToggled;
 
