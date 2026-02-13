@@ -1,4 +1,4 @@
-/* $Id: memobj-r0drv-darwin.cpp 112971 2026-02-12 14:02:00Z alexander.eichner@oracle.com $ */
+/* $Id: memobj-r0drv-darwin.cpp 112995 2026-02-13 12:26:47Z alexander.eichner@oracle.com $ */
 /** @file
  * IPRT - Ring-0 Memory Objects, Darwin.
  */
@@ -1114,7 +1114,7 @@ static int rtR0MemObjNativeLock(PPRTR0MEMOBJINTERNAL ppMem, void *pv, size_t cb,
 DECLHIDDEN(int) rtR0MemObjNativeLockUser(PPRTR0MEMOBJINTERNAL ppMem, RTR3PTR R3Ptr, size_t cb, uint32_t fAccess,
                                          uint32_t fFlags, RTR0PROCESS R0Process, const char *pszTag)
 {
-    RT_NOREF(fFlags)
+    RT_NOREF(fFlags);
     return rtR0MemObjNativeLock(ppMem, (void *)R3Ptr, cb, fAccess, (task_t)R0Process, pszTag);
 }
 
