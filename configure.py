@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 112970 2026-02-12 13:23:11Z andreas.loeffler@oracle.com $
+# $Id: configure.py 112991 2026-02-13 10:19:11Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 112970 $"
+__revision__ = "$Revision: 112991 $"
 
 import argparse
 import ctypes
@@ -3361,7 +3361,7 @@ g_aoTools = [
               dictDefinesToSetIfFailed = { 'VBOX_WITH_DOCS' : '', 'VBOX_WITH_JWS' : '', 'VBOX_WITH_JMSCOM': '', 'VBOX_WITH_JXPCOM' : '' }),
     ToolCheck("makeself", asCmd = [ ], fnCallback = ToolCheck.checkCallback_makeself, aeTargets = [ BuildTarget.LINUX ]),
     # On Solaris nasm is not officially supported.
-    ToolCheck("nasm", asCmd = [ "nasm" ], fnCallback = ToolCheck.checkCallback_NASM, aeTargetsExcluded = [ BuildTarget.SOLARIS ]),
+    ToolCheck("nasm", asCmd = [ "nasm" ], fnCallback = ToolCheck.checkCallback_NASM, aeTargetsExcluded = [ BuildTarget.DARWIN, BuildTarget.SOLARIS ]),
     ToolCheck("openwatcom", asCmd = [ "wcl", "wcl386", "wlink" ], fnCallback = ToolCheck.checkCallback_OpenWatcom,
               dictDefinesToSetIfFailed = { 'VBOX_WITH_OPEN_WATCOM' : '' }),
     ToolCheck("python_c_api", asCmd = [ ], fnCallback = ToolCheck.checkCallback_PythonC_API,
