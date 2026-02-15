@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 113028 2026-02-14 03:51:29Z knut.osmundsen@oracle.com $
+# $Id: configure.py 113032 2026-02-15 16:23:53Z alexander.eichner@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 113028 $"
+__revision__ = "$Revision: 113032 $"
 
 import argparse
 import collections;
@@ -157,7 +157,7 @@ class BuildTarget:
     r=bird: Why 'resembles'? They are mapped to KBUILD_TARGET and KBUILD_HOST, so they
             cannot be approximately correct, they have to be exactly correct. Duh.
             kBuild will not accept BSD='bsd'. 'any' matches kBuild's 'os-agonstic' and
-            would be better mapped as to that value.  The 'unknown' value is basically 
+            would be better mapped as to that value.  The 'unknown' value is basically
             unused.
     """
     ANY = "any";
