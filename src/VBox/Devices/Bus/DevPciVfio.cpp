@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 113037 2026-02-16 13:10:02Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 113048 2026-02-16 17:43:34Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -23,6 +23,111 @@
  * along with this program; if not, see <https://www.gnu.org/licenses>.
  *
  * SPDX-License-Identifier: GPL-3.0-only
+ */
+
+
+/** @page   pg_dev_vfio     DevPciVfio - VFIO based PCI passthrough
+ *
+ * This device emulation utilizes the VFIO framework on Linux and allows passing
+ * through real PCI Express devices to the guest, including support for Graphics
+ * Processing Units (GPUs).
+ *
+ * Not that this in early stages and has a few shortcomings currently.
+ *
+ * @section sec_dev_vfio_shortcomings
+ *
+ * The current emulation only supports MSI based interrupts. The legacy INTx style
+ * doesn't work currently because VFIO auto masks those after they fired to prevent
+ * an interrupt storm on the host and requires explicit unmasking after the guest
+ * handled it but we currently lack a callback mechanism from the I/O APIC to get notified
+ * about EOI events from the guest for the device.
+ * MSI-X interrupt support is not implemented right now, so the passed through device needs
+ * to support MSI in order to be supported.
+ *
+ * Saved states are not supported, and will never be as we can't capture the PCIe device state
+ * and replay it when resuming.
+ *
+ * @section sec_dev_vfio_requirements
+ *
+ * The following requirements have to be met in order to support PCIe passthrough:
+ *     - Recent enough hardware with IOMMU support
+ *     - Linux host with at least kernel 6.12
+ *     - The VM needs to have ICH9 configured
+ *     - The VM needs to have UEFI configured
+ *
+ * @section sec_dev_vfio_configuration
+ *
+ * In order to be able to pass through a device it needs to be bound to the vfio-pci kernel module.
+ * Depending on the complexity of the device this can be done after the original driver was loaded
+ * or needs to be done before the driver initialized the device because unloading the driver will leave
+ * it in a broken state only a host reset can cure. An example is the AMD Radeon 5700 XT which will serve
+ * as the example throughout this section.
+ *
+ * First identify the device's bus, device and function number for every device you want to pass through using lspci:
+ *     lspci
+ *     [...]
+ *     0a:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 10 [Radeon RX 5600 OEM/5600 XT / 5700/5700 XT] (rev c1)
+ *     0a:00.1 Audio device: Advanced Micro Devices, Inc. [AMD/ATI] Navi 10 HDMI Audio
+ *     [...]
+ *
+ * Also retrieve the PCI IDs for the devices:
+ *     lspci -n
+ *     [...]
+ *     0a:00.0 0300: 1002:731f (rev c1)
+ *     0a:00.1 0403: 1002:ab38
+ *     [...]
+ *
+ * As this is a multi function device all functions need to be passed through. Also ensure that the device being passed through
+ * is in a single IOMMU group.
+ *
+ * In order to override the default driver directly on boot get at the modalias for all devices using:
+ *     cat /sys/bus/pci/devices/0000\:0a\:00.0/modalias
+ *     pci:v00001002d0000731Fsv00001682sd00005701bc03sc00i00
+ *     cat /sys/bus/pci/devices/0000\:0a\:00.1/modalias
+ *     pci:v00001002d0000AB38sv00001002sd0000AB38bc04sc03i00
+ *
+ * Then edit /etc/modprobe.d/local.conf and add the following lines to override the kernel module
+ * for the devices (insert your modalias output for the devices):
+ *     alias pci:v00001002d0000AB38sv00001002sd0000AB38bc04sc03i00 vfio-pci
+ *     alias pci:v00001002d0000731Fsv00001682sd00005701bc03sc00i00 vfio-pci
+ *
+ * Also add the PCI IDs from the devices as an option when loading vfio-pci
+ *     options vfio-pci ids=1002:731f,1002:ab38
+ *
+ * On the next host reboot the devices should be bound to vfio-pci and /dev/vfio/devices should
+ * have vfio0 and vfio1.
+ *
+ * In case the device to be passed through to the guest doesn't suffer from broken state after a driver unload the following
+ * commands will unbind the driver from the device and bind it to vfio-pci:
+ *    echo 0000:09:00.0 > /sys/bus/pci/devices/0000\:09\:00.0/driver/unbind (the bus, device and function number is dependent on the device)
+ *    modprobe vfio-pci
+ *    echo 10ec 8126 > /sys/bus/pci/drivers/vfio-pci/new_id (the two hex numbers are the PCI vendor and device ID of the device being passed through)
+ *
+ * Make /dev/vfio/devices/vfio0, /dev/vfio/devices/vfio1 and /dev/iommu read/write accessible to the user running the VM.
+ *
+ * Create a VM and configure it to make use of the ICH9 chipset and enable EFI. Then add the following extradata to the VM:
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/ich9pcibridge/0/Config/ExpressEnabled" 1
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/ich9pcibridge/0/Config/ExpressPortType" "RootCmplxRootPort"
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/Config/Fun0/ExposeVga" 1
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/Config/Fun0/VfioPath" /dev/vfio/devices/vfio0
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/Config/Fun1/VfioPath" /dev/vfio/devices/vfio1
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/Config/IommuPath" /dev/iommu
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/PCIBusNo" 1
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/PCIDeviceNo" 0
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/PCIFunctionNo" 0
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/0/Trusted" 1
+ *
+ * If you intend to pass through multiple devices you have to change the pci-vfio instance number to 1, 2, etc.
+ * and adjust the PCI device number accordingly:
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/<instance>/..."
+ *    VBoxManage setextradata <VM name> "VBoxInternal/Devices/pci-vfio/<instance>/PCIDeviceNo" <instance>
+ *
+ * The ExposeVga setting is only required for graphics card devices which expose the legacy VGA I/O ranges to the guest
+ * so it can output early during boot. However you need to disable the VirtualBox emulated graphics controller or starting the VM
+ * fails because both devices want to register those ranges. Disable the emulated graphics controller with:
+ *    VBoxManage modifyvm <VM name> --graphicscontroller none
+ *
+ * After that you can start the VM with either the usual GUI or VBoxHeadless.
  */
 
 
