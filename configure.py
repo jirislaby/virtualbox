@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 113041 2026-02-16 14:07:02Z andreas.loeffler@oracle.com $
+# $Id: configure.py 113043 2026-02-16 14:17:39Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -72,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 113041 $"
+__revision__ = "$Revision: 113043 $"
 
 import argparse
 import collections;
@@ -3049,7 +3049,7 @@ class FeatureCheck(CheckBase):
                         fDisable = True;
 
         if fDisable:
-            g_oEnv.set('VBOX_WITH_VALIDATIONKIT', '');
+            g_oArgs.config_disable_validationkit = True;
 
         return True; # Always return success here, we just disable it above.
 
@@ -3764,6 +3764,7 @@ def main():
     oParser.add_argument('--disable-udptunnel', '--without-udptunnel', help='Disables building UDP tunnel support', action='store_true', default=None, dest='config_disable_udptunnel');
     oParser.add_argument('--disable-additions', '--without-additions', help='Disables building the Guest Additions', action='store_true', default=None, dest='config_disable_additions');
     oParser.add_argument('--disable-opengl', '--without-opengl', help='Disables building features which require OpenGL', action='store_true', default=None, dest='config_disable_opengl');
+    oParser.add_argument('--disable-validationkit', help='Disables building the Validation Kit', action='store_true', default=None, dest='config_disable_validationkit');
     oParser.add_argument('--ignore-in-tree-libs', help='Ignores all in-tree libs', action='store_true', default=None, dest='config_ignore_in_tree_libs');
     # Disables building the Extension Pack explicitly. Only makes sense for the non-OSE build.
     oParser.add_argument('--disable-extpack', '--without-extpack', help='Disables building the Extension Pack', action='store_true', default=None, dest='config_disable_extpack');
@@ -4077,7 +4078,7 @@ def main():
         lambda env: { 'VBOX_WITH_WEBSERVICES': '1' } if g_oArgs.config_with_webservice else {},
         # Disable stuff which aren't available in OSE or if building the Validation Kit is disabled.
         lambda env: { 'VBOX_WITH_VALIDATIONKIT': '' , 'VBOX_WITH_WIN32_ADDITIONS': '' } if g_oArgs.config_ose
-                                                                                        or g_oArgs.config_tools_disable_validationkit else {},
+                                                                                        or g_oArgs.config_disable_validationkit else {},
         # Disable building the Extension Pack VNC feature when only building Additions.
         lambda env: { 'VBOX_WITH_EXTPACK_VNC': '' } if g_oArgs.config_only_additions
                                                     or g_oArgs.config_ose else {},
