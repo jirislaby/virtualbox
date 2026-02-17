@@ -1,4 +1,4 @@
-/* $Id: memobj-r0drv-linux.c 113065 2026-02-17 15:00:09Z vadim.galitsyn@oracle.com $ */
+/* $Id: memobj-r0drv-linux.c 113067 2026-02-17 15:37:37Z vadim.galitsyn@oracle.com $ */
 /** @file
  * IPRT - Ring-0 Memory Objects, Linux.
  */
@@ -181,7 +181,6 @@ static const struct
 *   Internal Functions                                                                                                           *
 *********************************************************************************************************************************/
 static void rtR0MemObjLinuxFreePages(PRTR0MEMOBJLNX pMemLnx);
-static void rtR0MemObjLinuxFlushTlbAll(void);
 
 
 /**
@@ -2245,15 +2244,17 @@ DECLHIDDEN(int) rtR0MemObjNativeMapUser(PPRTR0MEMOBJINTERNAL ppMem, RTR0MEMOBJ p
     return rc;
 }
 
+#if defined(IPRT_USE_ALLOC_VM_AREA_FOR_EXEC) || defined(IPRT_USE_APPLY_TO_PAGE_RANGE_FOR_EXEC)
 static void rtR0MemObjLinuxFlushTlbAll(void)
 {
-#if RTLNX_VER_MIN(6,19,0)
+# if RTLNX_VER_MIN(6,19,0)
     if (RT_LIKELY(RT_VALID_PTR(g_pfnLinuxFlushTlbAll)))
         g_pfnLinuxFlushTlbAll();
-#else
+# else
     __flush_tlb_all();
-#endif
+# endif
 }
+#endif
 
 DECLHIDDEN(int) rtR0MemObjNativeProtect(PRTR0MEMOBJINTERNAL pMem, size_t offSub, size_t cbSub, uint32_t fProt)
 {
