@@ -1,4 +1,4 @@
-/* $Id: HostImpl.cpp 113054 2026-02-17 10:01:33Z alexander.eichner@oracle.com $ */
+/* $Id: HostImpl.cpp 113055 2026-02-17 10:27:27Z alexander.eichner@oracle.com $ */
 /** @file
  * VirtualBox COM class implementation: Host
  */
@@ -4334,8 +4334,8 @@ BOOL Host::i_HostIsNativeApiSupported()
         /* Check that the host has all the required capabilities. */
         for (uint32_t i = 0; i < RT_ELEMENTS(s_aCapsReq); i++)
         {
-            int rcLnx = ioctl(fdKvm, KVM_CHECK_EXTENSION, s_aCapsReq[i]);
-            if (rcLnx <= 0)
+            int vrcLnx = ioctl(fdKvm, KVM_CHECK_EXTENSION, s_aCapsReq[i]);
+            if (vrcLnx <= 0)
             {
                 close(fdKvm);
                 return FALSE;
