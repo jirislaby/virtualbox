@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113074 2026-02-18 15:59:00Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113075 2026-02-18 16:06:47Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -56,6 +56,7 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
                                                    bool fToggled /* = false */)
     : QWidget(pParent)
     , m_pObject(pObject)
+    , m_iWidthHint(iWidthHint)
     , m_fToggled(fToggled)
     , m_pLayoutMain(0)
     , m_pLayoutUpper(0)
@@ -66,9 +67,23 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
     , m_pLabelDetails(0)
     , m_fHovered(false)
 {
+}
+
+void UINotificationObjectItem::prepare()
+{
     /* Make sure item is opaque. */
     setAutoFillBackground(true);
 
+    /* Prepare everything: */
+    prepareWidgets();
+    prepareConnections();
+
+    /* Apply language settings: */
+    sltRetranslateUI();
+}
+
+void UINotificationObjectItem::prepareWidgets()
+{
     /* Prepare main layout: */
     m_pLayoutMain = new QVBoxLayout(this);
     if (m_pLayoutMain)
@@ -121,6 +136,7 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
         if (m_pLabelDetails)
         {
             /* Adjust width hint (if it was passed): */
+            int iWidthHint = m_iWidthHint;
             if (iWidthHint > 0)
             {
                 /* Acquire layout margins: */
@@ -167,11 +183,13 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
             }
         }
     }
+}
 
+void UINotificationObjectItem::prepareConnections()
+{
     /* Install translation listener: */
     connect(&translationEventListener(), &UITranslationEventListener::sigRetranslateUI,
         this, &UINotificationObjectItem::sltRetranslateUI);
-    sltRetranslateUI();
 }
 
 bool UINotificationObjectItem::event(QEvent *pEvent)
@@ -285,6 +303,13 @@ UINotificationProgressItem::UINotificationProgressItem(QWidget *pParent,
     : UINotificationObjectItem(pParent, pObject, iWidthHint)
     , m_pProgressBar(0)
 {
+}
+
+void UINotificationProgressItem::prepareWidgets()
+{
+    /* Call to base-class: */
+    UINotificationObjectItem::prepareWidgets();
+
     /* Main layout was prepared in base-class: */
     if (m_pLayoutMain)
     {
@@ -312,6 +337,12 @@ UINotificationProgressItem::UINotificationProgressItem(QWidget *pParent,
             m_pLayoutMain->addWidget(m_pProgressBar);
         }
     }
+}
+
+void UINotificationProgressItem::prepareConnections()
+{
+    /* Call to base-class: */
+    UINotificationObjectItem::prepareConnections();
 
     /* Prepare progress connections: */
     connect(progress(), &UINotificationProgress::sigProgressStarted,
@@ -390,6 +421,13 @@ UINotificationDownloaderItem::UINotificationDownloaderItem(QWidget *pParent,
     : UINotificationObjectItem(pParent, pObject, iWidthHint)
     , m_pProgressBar(0)
 {
+}
+
+void UINotificationDownloaderItem::prepareWidgets()
+{
+    /* Call to base-class: */
+    UINotificationObjectItem::prepareWidgets();
+
     /* Main layout was prepared in base-class: */
     if (m_pLayoutMain)
     {
@@ -417,6 +455,12 @@ UINotificationDownloaderItem::UINotificationDownloaderItem(QWidget *pParent,
             m_pLayoutMain->addWidget(m_pProgressBar);
         }
     }
+}
+
+void UINotificationDownloaderItem::prepareConnections()
+{
+    /* Call to base-class: */
+    UINotificationObjectItem::prepareConnections();
 
     /* Prepare downloader connections: */
     connect(downloader(), &UINotificationDownloader::sigProgressStarted,
@@ -491,13 +535,24 @@ UINotificationObjectItem *UINotificationItem::create(QWidget *pParent,
                                                      int iWidthHint,
                                                      bool fToggled)
 {
+    /* Prepare item: */
+    UINotificationObjectItem *pItem = 0;
+
     /* Handle known types: */
     if (pObject->inherits("UINotificationProgress"))
-        return new UINotificationProgressItem(pParent, pObject, iWidthHint);
+        pItem = new UINotificationProgressItem(pParent, pObject, iWidthHint);
 #ifdef VBOX_GUI_WITH_NETWORK_MANAGER
     else if (pObject->inherits("UINotificationDownloader"))
-        return new UINotificationDownloaderItem(pParent, pObject, iWidthHint);
+        pItem = new UINotificationDownloaderItem(pParent, pObject, iWidthHint);
 #endif
     /* Handle defaults: */
-    return new UINotificationObjectItem(pParent, pObject, iWidthHint, fToggled);
+    else
+        pItem = new UINotificationObjectItem(pParent, pObject, iWidthHint, fToggled);
+
+    /* Prepare item: */
+    if (pItem)
+        pItem->prepare();
+
+    /* Return prepared result: */
+    return pItem;
 }

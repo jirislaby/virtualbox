@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113074 2026-02-18 15:59:00Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113075 2026-02-18 16:06:47Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -67,7 +67,18 @@ public:
                              int iWidthHint,
                              bool fToggled = false);
 
+    /** Returns notification-object this item created for. */
+    UINotificationObject *internalObject() { return m_pObject; }
+
+    /** Prepares everything. */
+    void prepare();
+
 protected:
+
+    /** Prepares widgets. */
+    virtual void prepareWidgets();
+    /** Prepares connections. */
+    virtual void prepareConnections();
 
     /** Handles any Qt @a pEvent. */
     virtual bool event(QEvent *pEvent) RT_OVERRIDE;
@@ -77,6 +88,8 @@ protected:
 
     /** Holds the notification-object this item created for. */
     UINotificationObject *m_pObject;
+    /** Holds the width-hint for the details label. */
+    int                   m_iWidthHint;
     /** Holds whether item is toggled. */
     bool                  m_fToggled;
 
@@ -121,6 +134,13 @@ public:
                                UINotificationObject *pObject,
                                int iWidthHint);
 
+protected:
+
+    /** Prepares widgets. */
+    virtual void prepareWidgets() RT_OVERRIDE RT_FINAL;
+    /** Prepares connections. */
+    virtual void prepareConnections() RT_OVERRIDE RT_FINAL;
+
 private slots:
 
     /** Handles signal about progress started. */
@@ -157,6 +177,13 @@ public:
     UINotificationDownloaderItem(QWidget *pParent,
                                  UINotificationObject *pObject,
                                  int iWidthHint);
+
+protected:
+
+    /** Prepares widgets. */
+    virtual void prepareWidgets() RT_OVERRIDE RT_FINAL;
+    /** Prepares connections. */
+    virtual void prepareConnections() RT_OVERRIDE RT_FINAL;
 
 private slots:
 
