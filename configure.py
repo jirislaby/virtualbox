@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# $Id: configure.py 113069 2026-02-18 14:51:56Z andreas.loeffler@oracle.com $
+# $Id: configure.py 113070 2026-02-18 15:16:30Z andreas.loeffler@oracle.com $
 """
 Configuration script for building VirtualBox.
 
@@ -72,7 +72,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 113069 $"
+__revision__ = "$Revision: 113070 $"
 
 import argparse
 import collections;
@@ -3441,7 +3441,7 @@ g_aoLibs = [
     ## @todo Compiling in-tree lib fails because of dragging in too much stuff like IN_RING3 and other includes.
     #LibraryCheck("lwip", [ "lwip/init.h" ], [ "liblwip" ], [ BuildTarget.ANY ],
     #             '#include <lwip/init.h>\nint main() { printf("%d.%d.%d", LWIP_VERSION_MAJOR, LWIP_VERSION_MINOR, LWIP_VERSION_REVISION); return 0; }\n'),
-    LibraryCheck("libgl", [ "GL/gl.h" ], [ "libGL" ], aeTargets = [ BuildTarget.LINUX, BuildTarget.DARWIN, BuildTarget.SOLARIS ],
+    LibraryCheck("libgl", [ "GL/gl.h" ], [ "libGL" ], aeTargets = [ BuildTarget.LINUX, BuildTarget.SOLARIS ],
                  sCode = '#include <GL/gl.h>\n#include <stdio.h>\nint main() { const GLubyte *s = glGetString(GL_VERSION); printf("%s", s ? (const char *)s : "<found>"); return 0; }\n'),
     LibraryCheck("openssl", [ "openssl/crypto.h" ], [ "libcrypto", "libssl", "libz", "libzstd" ], fUseInTree = True,
                  sCode = '#include <openssl/crypto.h>\n#include <stdio.h>\nint main() { printf("%s", OpenSSL_version(OPENSSL_VERSION)); return 0; }\n',
