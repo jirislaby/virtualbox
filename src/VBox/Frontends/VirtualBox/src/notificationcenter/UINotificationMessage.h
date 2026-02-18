@@ -1,4 +1,4 @@
-/* $Id: UINotificationMessage.h 113060 2026-02-17 12:01:37Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationMessage.h 113071 2026-02-18 15:51:58Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationMessage declarations.
  */
@@ -80,7 +80,7 @@ class CDnDSource;
 class CDnDTarget;
 #endif
 
-/** UINotificationObject extension for message functionality. */
+/** UINotificationSimple extension for message functionality. */
 class SHARED_LIBRARY_STUFF UINotificationMessage : public UINotificationSimple
 {
     Q_OBJECT;
@@ -97,6 +97,9 @@ public:
         NotificationType_Critical,
         NotificationType_GuruMeditation
     };
+
+    /** Returns whether object is done. */
+    virtual bool isDone() const RT_OVERRIDE RT_FINAL { return true; }
 
     /** @name Simple general warnings.
       * @{ */
