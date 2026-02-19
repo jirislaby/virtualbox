@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 113080 2026-02-19 09:11:45Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 113082 2026-02-19 10:24:14Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -263,6 +263,10 @@ typedef struct VFIOPCIFUN
     void                 *pvRom;
     /** ROM region handle. */
     PGMMMIO2HANDLE       hRom;
+    /** The write protection layer for the ROM MMIO2 region. */
+    PGMPHYSHANDLERTYPE   hRomAccHndType;
+    /** The physical guest address the ROM is currently mapped at. */
+    RTGCPHYS             GCPhysRom;
 
     /** The number of interrupt vectors for each interrupt type. */
     AssertCompile(   VFIO_PCI_INTX_IRQ_INDEX == 0
@@ -785,6 +789,75 @@ static int pciVfioSetupVga(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns)
 }
 
 
+/**
+ * HC access handler for the ROM.
+ *
+ * @returns VINF_SUCCESS if the handler have carried out the operation.
+ * @returns VINF_PGM_HANDLER_DO_DEFAULT if the caller should carry out the access operation.
+ * @param   pVM             VM Handle.
+ * @param   pVCpu           The cross context CPU structure for the calling EMT.
+ * @param   GCPhys          The physical address the guest is writing to.
+ * @param   pvPhys          The HC mapping of that address.
+ * @param   pvBuf           What the guest is reading/writing.
+ * @param   cbBuf           How much it's reading/writing.
+ * @param   enmAccessType   The access type.
+ * @param   enmOrigin       Who is making the access.
+ * @param   uUser           User argument.
+ */
+static DECLCALLBACK(VBOXSTRICTRC)
+pciVfioRomWriteHandler(PVM pVM, PVMCPU pVCpu, RTGCPHYS GCPhys, void *pvPhys, void *pvBuf, size_t cbBuf,
+                          PGMACCESSTYPE enmAccessType, PGMACCESSORIGIN enmOrigin, uint64_t uUser)
+{
+    RT_NOREF(pVM, pVCpu, GCPhys, pvPhys, pvBuf, cbBuf, enmAccessType, enmOrigin, uUser);
+
+    LogRelMax(10, ("VFIO: Attempted write access to ROM region\n"));
+    return VINF_SUCCESS;
+}
+
+
+/**
+ * @callback_method_impl{FNPCIIOREGIONMAP}
+ */
+DECLCALLBACK(int) pciVfioRomRegionMapUnmap(PPDMDEVINS pDevIns, PPDMPCIDEV pPciDev, uint32_t iRegion,
+                                           RTGCPHYS GCPhysAddress, RTGCPHYS cb, PCIADDRESSSPACE enmType)
+{
+    RT_NOREF(iRegion, enmType);
+    PVFIOPCI pThis = PDMDEVINS_2_DATA(pDevIns, PVFIOPCI);
+    int      rc;
+    Assert(pPciDev == pDevIns->apPciDevs[pPciDev->uDevFn & 0x7]);
+    PVFIOPCIFUN pFun = &pThis->aPciFuns[pPciDev->uDevFn & 0x7];
+
+    Log(("pciVfioRomRegionMapUnmap: iRegion=%d GCPhysAddress=%RGp cb=%RGp enmType=%d\n", iRegion, GCPhysAddress, cb, enmType));
+    if (GCPhysAddress != NIL_RTGCPHYS)
+    {
+        /* Map the ROM. */
+        rc = PDMDevHlpMmio2Map(pDevIns, pFun->hRom, GCPhysAddress);
+        AssertRC(rc);
+
+        if (RT_SUCCESS(rc))
+        {
+            rc = PDMDevHlpPGMHandlerPhysicalRegister(pDevIns, GCPhysAddress, GCPhysAddress + cb - 1,
+                                                     pFun->hRomAccHndType, "VFIO ROM");
+            AssertRC(rc);
+        }
+
+        if (RT_SUCCESS(rc))
+        {
+            pFun->GCPhysRom = GCPhysAddress;
+            Log(("pciVfioRomRegionMapUnmap: GCPhysRom=%RGp cb=%RGp\n", GCPhysAddress, cb));
+        }
+        rc = VINF_PCI_MAPPING_DONE; /* caller only cares about this status, so it is okay that we overwrite errors here. */
+    }
+    else
+    {
+        rc = PDMDevHlpPGMHandlerPhysicalDeregister(pDevIns, pFun->GCPhysRom);
+        AssertRC(rc);
+        pFun->GCPhysRom = NIL_RTGCPHYS;
+    }
+    return rc;
+}
+
+
 static int pciVfioSetupRom(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns)
 {
     struct vfio_region_info RegionInfo; RT_ZERO(RegionInfo);
@@ -799,14 +872,17 @@ static int pciVfioSetupRom(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns)
 
     /** @todo Currently we will map the ROM as MMIO2 region as we lack the necessary
      * infrastructure to register ROMs for PCI BARs. This is wrong because MMIO2 regions
-     * are mapped read/write. OTOH the guest can only trash the virtual ROM and break itself. */
+     * are mapped read/write. To protect against writes we put an access handler over the region,
+     * which will discard (and log) all writes.
+     */
 
     pFun->offRom = RegionInfo.offset;
     pFun->cbRom  = RegionInfo.size;
 
-    rc = PDMDevHlpPCIIORegionCreateMmio2(pDevIns, VBOX_PCI_ROM_SLOT, pFun->cbRom,
-                                         PCI_ADDRESS_SPACE_MEM_PREFETCH, "ROM",
-                                         &pFun->pvRom, &pFun->hRom);
+    rc = PDMDevHlpPCIIORegionCreateMmio2Ex(pDevIns, VBOX_PCI_ROM_SLOT, pFun->cbRom,
+                                           PCI_ADDRESS_SPACE_MEM_PREFETCH, 0 /*fFlags*/,
+                                           pciVfioRomRegionMapUnmap, "ROM",
+                                           &pFun->pvRom, &pFun->hRom);
     AssertLogRelRCReturn(rc, PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
                                                  N_("Failed to allocate %zu bytes of ROM"), pFun->cbRom));
 
@@ -814,6 +890,10 @@ static int pciVfioSetupRom(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns)
     if (cbRead != (ssize_t)pFun->cbRom)
         return PDMDevHlpVMSetError(pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
                                    N_("Failed to read %zu bytes of ROM from the device"), pFun->cbRom);
+
+    rc = PDMDevHlpPGMHandlerPhysicalTypeRegister(pThis->pDevIns, PGMPHYSHANDLERKIND_WRITE,
+                                                 pciVfioRomWriteHandler, "VFIO ROM", &pFun->hRomAccHndType);
+    AssertRCReturn(rc, rc);
 
     return VINF_SUCCESS;
 }
