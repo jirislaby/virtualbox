@@ -1,4 +1,4 @@
-/* $Id: UINotificationCenter.cpp 113089 2026-02-19 13:54:59Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationCenter.cpp 113091 2026-02-19 15:03:50Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationCenter class implementation.
  */
@@ -999,8 +999,8 @@ void UINotificationCenter::setAnimatedValue(int iValue)
     // Hide items if they are masked anyway.
     // This actually shouldn't be necessary but
     // *is* required to avoid painting artifacts.
-    foreach (QWidget *pItem, m_items.values())
-        pItem->setVisible(animatedValue());
+    // foreach (QWidget *pItem, m_items.values())
+    //     pItem->setVisible(animatedValue());
 
     /* Adjust geometry: */
     adjustGeometry();
