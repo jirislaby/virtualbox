@@ -1,11 +1,4 @@
-#!/usr/bin/env python3
-# $Id: configure.py 113096 2026-02-19 17:12:42Z andreas.loeffler@oracle.com $
-"""
-Configuration script for building VirtualBox.
-
-Requires >= Python 3.6.
-"""
-
+#!/bin/sh
 # -*- coding: utf-8 -*-
 # pylint: disable=bare-except
 # pylint: disable=consider-using-f-string
@@ -18,6 +11,31 @@ Requires >= Python 3.6.
 # pylint: disable=invalid-name
 # pylint: disable=multiple-statements
 # pylint: disable=line-too-long
+# $Id: configure.py 113097 2026-02-19 17:19:33Z andreas.loeffler@oracle.com $
+#
+# The following checks for the right (i.e. most recent) Python binary available
+# and re-starts the script using that binary (like a shell wrapper).
+#
+# Using a shebang like "#!/bin/env python" on newer Fedora/Debian distros is banned [1]
+# and also won't work on other newer distros (Ubuntu >= 23.10), as those only ship
+# python3 without a python->python3 symlink anymore.
+#
+# [1] https://lists.fedoraproject.org/archives/list/devel@lists.fedoraproject.org/message/2PD5RNJRKPN2DVTNGJSBHR5RUSVZSDZI/
+''':'
+for python_bin in python3 python
+do
+    type "$python_bin" > /dev/null 2>&1 && exec "$python_bin" "$0" "$@"
+done
+echo >&2 "ERROR: Python not found! Please install this first in order to run this program."
+exit 1
+':'''
+
+#
+# Configuration script for building VirtualBox.
+#
+# Requires >= Python 3.6.
+#
+
 __copyright__ = \
 """
 Copyright (C) 2025-2026 Oracle and/or its affiliates.
@@ -72,7 +90,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 113096 $"
+__revision__ = "$Revision: 113097 $"
 
 import argparse
 import collections;
