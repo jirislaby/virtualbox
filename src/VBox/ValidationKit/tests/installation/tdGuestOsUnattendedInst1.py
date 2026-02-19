@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id: tdGuestOsUnattendedInst1.py 113086 2026-02-19 11:56:51Z serkan.bayraktar@oracle.com $
+# $Id: tdGuestOsUnattendedInst1.py 113090 2026-02-19 14:12:58Z serkan.bayraktar@oracle.com $
 
 """
 VirtualBox Validation Kit - Guest OS unattended installation tests.
@@ -37,7 +37,7 @@ terms and conditions of either the GPL or the CDDL or both.
 
 SPDX-License-Identifier: GPL-3.0-only OR CDDL-1.0
 """
-__version__ = "$Revision: 113086 $"
+__version__ = "$Revision: 113090 $"
 
 
 # Standard Python imports.
@@ -578,7 +578,7 @@ class tdGuestOsInstTest1(vbox.TestDriver):
                          UnattendedVm.kfAvoidNetwork | UnattendedVm.kfLinuxIoApic),
             UnattendedVm(oSet, 'tst-debian-12.8-64', 'Debian12_64', '7.1/uaisos/debian-12.8.0-amd64-DVD-1.iso',  # >=6GiB?
                          UnattendedVm.kfAvoidNetwork | UnattendedVm.kfLinuxIoApic),
-            UnattendedVm(oSet, 'tst-debian-13.0-64', 'Debian13_64', '7.1/uaisos/debian-13.0.0-amd64-DVD-1.iso',  # >=6GiB?
+            UnattendedVm(oSet, 'tst-debian-13.3-64', 'Debian13_64', '7.1/uaisos/debian-13.3.0-amd64-DVD-1.iso',  # >=6GiB?
                          UnattendedVm.kfAvoidNetwork | UnattendedVm.kfLinuxIoApic),
 
             #
