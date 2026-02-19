@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.cpp 113083 2026-02-19 11:28:35Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.cpp 113100 2026-02-19 19:37:50Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD.
  */
@@ -154,6 +154,8 @@
 #include <poll.h>
 #include <unistd.h>
 
+# include "DevPciInternal.h"
+
 #if 0 /* Allow building on older hosts. */
 # include <linux/vfio.h>
 # include <linux/iommufd.h>
@@ -187,6 +189,19 @@
 *********************************************************************************************************************************/
 
 /**
+ * MSI-X table entry.
+ */
+typedef struct MSIXTBLENTRY
+{
+    volatile uint32_t u32MsgAddr;
+    volatile uint32_t u32MsgAddrUpper;
+    volatile uint32_t u32MsgData;
+    volatile uint32_t u32VecCtrl;
+} MSIXTBLENTRY;
+typedef MSIXTBLENTRY *PMSIXTBLENTRY;
+
+
+/**
  * A single PCI BAR.
  */
 typedef struct VFIOPCIBAR
@@ -195,6 +210,10 @@ typedef struct VFIOPCIBAR
     uint8_t             iPciFun;
     /** Region type, 0 - disabled, 1 - PIO, 2 - MMIO. */
     uint8_t             bType;
+    /** The address space flags for an MMIO region. */
+    PCIADDRESSSPACE     enmAddrSpace;
+    /** Size of the region. */
+    uint64_t            cbRegion;
     /** Type dependent data. */
     union
     {
@@ -240,6 +259,8 @@ typedef struct VFIOPCIFUN
     uint8_t              abPciCfgIntercept[(4096 * 4) / 8];
     /** The PCI BAR information. */
     VFIOPCIBAR           aBars[VBOX_PCI_NUM_REGIONS];
+    /** The BAR containing MSI-X state if available. */
+    uint8_t              iBarMsix;
 
     /** Flag whether MMIO regions are intercepted and handled through
      * regular MMIO handlers or are mapped into the guest. */
@@ -289,6 +310,26 @@ typedef struct VFIOPCIFUN
 
     /** The MSI capability offset if enabled. */
     uint8_t              offMsiCtrl;
+
+    /** The MSI-X capability offset if enabled. */
+    uint8_t              offMsixCtrl;
+    /** Size of the MSI-X region. */
+    size_t               cbMsix;
+    /** Pointer to the MSI-X region memory. */
+    uint8_t              *pbMsix;
+    /** Pointer to the MSI-X table entries. */
+    PMSIXTBLENTRY        paMsixTbl;
+    /** Pointer to the PBA array. */
+    volatile uint64_t    *pbmMsixPba;
+    /** MSI-X region handle. */
+    PGMMMIO2HANDLE       hMsix;
+#if 0
+    /** The write protection layer for the MSI-X MMIO2 region. */
+    PGMPHYSHANDLERTYPE   hMsixWrHndType;
+    /** The physical guest address the MSI-X region is currently mapped at. */
+    RTGCPHYS             GCPhysMsix;
+#endif
+
 } VFIOPCIFUN;
 /** Pointer to the a VFIO PCI function. */
 typedef VFIOPCIFUN *PVFIOPCIFUN;
@@ -551,6 +592,38 @@ DECLINLINE(int) pciVfioQueryRegionInfo(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_
 }
 
 
+static int pciVfioBarContainsMsix(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uRegion, uint32_t cbInfo, bool *pfMsix)
+{
+    struct vfio_region_info *pRegionInfo = (struct vfio_region_info *)RTMemTmpAllocZ(cbInfo);
+    if (!pRegionInfo)
+        return VERR_NO_TMP_MEMORY;
+
+    pRegionInfo->argsz = cbInfo;
+    pRegionInfo->index = uRegion;
+
+    int rcLnx = ioctl(pFun->iFdVfio, VFIO_DEVICE_GET_REGION_INFO, pRegionInfo);
+    if (rcLnx == -1)
+        return PDMDevHlpVMSetError(pThis->pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
+                                N_("Getting information for region %u of opened VFIO device failed with %d"), uRegion, errno);
+
+    AssertReturnStmt(pRegionInfo->cap_offset != 0, RTMemTmpFree(pRegionInfo), VERR_INVALID_STATE);
+    uint32_t offCap = pRegionInfo->cap_offset;
+    *pfMsix = false;
+    while (offCap)
+    {
+        struct vfio_info_cap_header *pHdr = (struct vfio_info_cap_header *)((uint8_t *)pRegionInfo + offCap);
+        if (pHdr->id == VFIO_REGION_INFO_CAP_MSIX_MAPPABLE)
+        {
+            *pfMsix = true;
+            break;
+        }
+    }
+
+    RTMemTmpFree(pRegionInfo);
+    return VINF_SUCCESS;
+}
+
+
 static int pciVfioSetupBar(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns, PPDMPCIDEV pPciDev, uint32_t uRegion, uint32_t uVfioRegion)
 {
     struct vfio_region_info RegionInfo; RT_ZERO(RegionInfo);
@@ -568,6 +641,7 @@ static int pciVfioSetupBar(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns,
         if (RT_FAILURE(rc))
             return rc;
 
+        pFun->aBars[uRegion].cbRegion  = RegionInfo.size;
         if (u32PciBar & RT_BIT_32(0))
         {
             /* PIO. */
@@ -581,6 +655,19 @@ static int pciVfioSetupBar(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns,
         }
         else
         {
+            /* Check whether this might be a region containing MSI-X state. */
+            if (RegionInfo.flags & VFIO_REGION_INFO_FLAG_CAPS)
+            {
+                bool fMsix = false;
+
+                rc = pciVfioBarContainsMsix(pThis, pFun, uVfioRegion, RegionInfo.argsz, &fMsix);
+                if (RT_FAILURE(rc))
+                    return rc;
+
+                if (fMsix)
+                    pFun->iBarMsix = uRegion;
+            }
+
             Assert(RegionInfo.flags & VFIO_REGION_INFO_FLAG_MMAP);
             int fProt =   ((RegionInfo.flags & VFIO_REGION_INFO_FLAG_READ)  ? PROT_READ  : 0)
                         | ((RegionInfo.flags & VFIO_REGION_INFO_FLAG_WRITE) ? PROT_WRITE : 0);
@@ -597,24 +684,8 @@ static int pciVfioSetupBar(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMDEVINS pDevIns,
             if (u32PciBar & PCI_ADDRESS_SPACE_MEM_PREFETCH)
                 enmAddrSpace |= PCI_ADDRESS_SPACE_MEM_PREFETCH;
 
-            if (pFun->fInterceptMmio)
-            {
-                rc = PDMDevHlpMmioCreate(pDevIns, RegionInfo.size, pPciDev, uRegion /*iPciRegion*/,
-                                         pciVfioMmioWrite, pciVfioMmioRead, &pFun->aBars[uRegion],
-                                         IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU, "MMIO",
-                                         &pFun->aBars[uRegion].hnd.hMmio);
-                AssertLogRelRCReturn(rc, rc);
-
-                rc = PDMDevHlpPCIIORegionRegisterMmioEx(pDevIns, pPciDev, uRegion, RegionInfo.size, (PCIADDRESSSPACE)enmAddrSpace,
-                                                        pFun->aBars[uRegion].hnd.hMmio, NULL);
-            }
-            else
-                rc = PDMDevHlpPCIIORegionCreateMmio2FromExistingEx(pDevIns, pPciDev, uRegion, RegionInfo.size,
-                                                                   (PCIADDRESSSPACE)enmAddrSpace,
-                                                                   "MMIO", (void *)pFun->aBars[uRegion].u.pvMmio,
-                                                                   &pFun->aBars[uRegion].hnd.hMmio2);
-
-            AssertLogRelRCReturn(rc, rc);
+            pFun->aBars[uRegion].enmAddrSpace = (PCIADDRESSSPACE)enmAddrSpace;
+            /* MMIO mapping happens at a later stage. */
         }
     }
     else /* Not available. */
@@ -949,9 +1020,10 @@ static DECLCALLBACK(int) pciVfioIrqPoller(PPDMDEVINS pDevIns, PPDMTHREAD pThread
             }
 
             /* Resize the pollfd array if necessary. */
-            if (cIrqs > cEntriesAlloc + 1)
+            uint32_t const cNeeded = cIrqs + 1;
+            if (cNeeded > cEntriesAlloc)
             {
-                struct pollfd *paIrqFdsNew = (struct pollfd *)RTMemRealloc(paIrqFds, cIrqs * sizeof(*paIrqFds));
+                struct pollfd *paIrqFdsNew = (struct pollfd *)RTMemRealloc(paIrqFds, cNeeded * sizeof(*paIrqFds));
                 if (!paIrqFdsNew)
                 {
                     /** @todo This is quite wrong, we could allocate all possible entries up front and potentially waste memory... */
@@ -962,7 +1034,7 @@ static DECLCALLBACK(int) pciVfioIrqPoller(PPDMDEVINS pDevIns, PPDMTHREAD pThread
                 }
 
                 paIrqFds      = paIrqFdsNew;
-                cEntriesAlloc = cIrqs;
+                cEntriesAlloc = cNeeded;
             }
 
             for (uint32_t i = 0; i < cIrqs; i++)
@@ -1000,7 +1072,41 @@ static DECLCALLBACK(int) pciVfioIrqPoller(PPDMDEVINS pDevIns, PPDMTHREAD pThread
                     ssize_t cb = read(paIrqFds[i].fd, &u64, sizeof(u64));
                     Assert(cb == sizeof(u64)); RT_NOREF(cb);
 
-                    PDMDevHlpPCISetIrqEx(pDevIns, pPciDev, i - 1, 1);
+                    uint16_t const uVec = i - 1;
+                    if (pFun->uIrqModeCur == VFIO_PCI_MSIX_IRQ_INDEX)
+                    {
+                        /* Can't use PDMDevHlpPCISetIrqEx here as the PCI stuff is not aware of MSI-X support. */
+                        PMSIXTBLENTRY pVec = &pFun->paMsixTbl[uVec];
+
+                        uint16_t uMmc = PDMPciDevGetWord(pPciDev, pFun->offMsixCtrl);
+
+                        /* Mark as pending if vector is disabled. */
+                        if (   uMmc & RT_BIT(14)
+                            || pVec->u32VecCtrl & RT_BIT_32(0))
+                        {
+                            uint16_t offPba = uVec / 64;
+                            uint8_t  idxBit = uVec & 0x3f;
+                            volatile uint64_t *pbmPba = &pFun->pbmMsixPba[offPba];
+                            ASMAtomicBitSet(pbmPba, idxBit);
+                        }
+                        else
+                        {
+                            /** @todo This isn't pretty as it accesses stuff internal to the PCI subsystem. */
+                            PCPDMPCIHLPR3 pPciHlp = (PCPDMPCIHLPR3)pPciDev->Int.s.pvPciBusPtrR3;
+                            MSIMSG Msi;
+                            Msi.Addr.u64 = ((uint64_t)pVec->u32MsgAddrUpper << 32) | pVec->u32MsgAddr;
+                            Msi.Data.u32 = pVec->u32MsgData;
+
+                            PPDMDEVINS pDevInsBus = pPciHlp->pfnGetBusByNo(pDevIns, pPciDev->Int.s.idxPdmBus);
+                            Assert(pDevInsBus);
+                            PDEVPCIBUS pBus = PDMINS_2_DATA(pDevInsBus, PDEVPCIBUS);
+                            uint16_t const uBusDevFn = PCIBDF_MAKE(pBus->iBus, pPciDev->uDevFn);
+
+                            pPciHlp->pfnIoApicSendMsi(pDevIns, uBusDevFn, &Msi, 0 /*uTagSrc*/);
+                        }
+                    }
+                    else
+                        PDMDevHlpPCISetIrqEx(pDevIns, pPciDev, uVec, 1);
 
                     if (pFun->uIrqModeCur == VFIO_PCI_INTX_IRQ_INDEX)
                     {
@@ -1107,13 +1213,11 @@ DECLINLINE(int) pciVfioQueryIrqInfo(PVFIOPCI pThis, PCVFIOPCIFUN pFun, uint32_t 
 static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfioIrq, uint16_t cVectors)
 {
     int rc = VINF_SUCCESS;
-#ifdef RT_STRICT
     uint8_t uIrqModeCur = ASMAtomicReadU8(&pFun->uIrqModeCur);
-    Assert(   uIrqModeCur == uVfioIrq
-           || uIrqModeCur == UINT8_MAX);
-#endif
 
-    if (!cVectors)
+    if (   !cVectors
+        || (   uIrqModeCur != uVfioIrq
+            && uIrqModeCur != UINT8_MAX))
     {
         /* Clear. */
         rc = pciVfioIrqPollerSwitchMode(pThis, pFun, UINT8_MAX, true /*fWait*/);
@@ -1125,7 +1229,7 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
         struct vfio_irq_set IrqSet;
         IrqSet.argsz = sizeof(IrqSet);
         IrqSet.flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
-        IrqSet.index = uVfioIrq;
+        IrqSet.index = uIrqModeCur;
         IrqSet.start = 0;
         IrqSet.count = 0;
 
@@ -1134,8 +1238,8 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
             return PDMDevHlpVMSetError(pThis->pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
                                        N_("Clearing interrupts on the device failed with %d"), errno);
 
-        if (   uVfioIrq == VFIO_PCI_MSI_IRQ_INDEX
-            || uVfioIrq == VFIO_PCI_MSIX_IRQ_INDEX)
+        if (   uIrqModeCur == VFIO_PCI_MSI_IRQ_INDEX
+            || uIrqModeCur == VFIO_PCI_MSIX_IRQ_INDEX)
         {
             /*
              * When disabling MSI/MSI-X interrupts the kernel will always switch to INTx.
@@ -1145,6 +1249,7 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
             uint16_t u16Cmd = PDMPciDevGetCommand(pThis->pDevIns->apPciDevs[pFun->uPciFun]);
             if (u16Cmd & RT_BIT(10))
             {
+#if 0
                 /* Disable INTx again. */
                 IrqSet.argsz = sizeof(IrqSet);
                 IrqSet.flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
@@ -1158,13 +1263,14 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
                                                N_("Clearing INTx interrupts on the device failed with %d"), errno);
 
                 return VINF_SUCCESS;
+#endif
             }
             else
                 uVfioIrq = VFIO_PCI_INTX_IRQ_INDEX;
         }
-        else
-            return VINF_SUCCESS;
     }
+
+    Assert(ASMAtomicReadU8(&pFun->uIrqModeCur) == UINT8_MAX);
 
     if (cVectors)
     {
@@ -1190,7 +1296,8 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
                 return PDMDevHlpVMSetError(pThis->pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
                                         N_("Assigning one INTX interrupt failed with %d (%u)"), errno, sizeof(uBuf));
         }
-        else if (uVfioIrq == VFIO_PCI_MSI_IRQ_INDEX)
+        else if (   uVfioIrq == VFIO_PCI_MSI_IRQ_INDEX
+                 || uVfioIrq == VFIO_PCI_MSIX_IRQ_INDEX)
         {
             union
             {
@@ -1210,20 +1317,16 @@ static int pciVfioIrqReconfigure(PVFIOPCI pThis, PVFIOPCIFUN pFun, uint32_t uVfi
             int rcLnx = ioctl(pFun->iFdVfio, VFIO_DEVICE_SET_IRQS, &uBuf);
             if (rcLnx == -1)
                 return PDMDevHlpVMSetError(pThis->pDevIns, RTErrConvertFromErrno(errno), RT_SRC_POS,
-                                        N_("Assigning one INTX interrupt failed with %d (%u)"), errno, sizeof(uBuf));
+                                        N_("Assigning MSI/MSI-X interrupts failed with %d (%u)"), errno, sizeof(uBuf));
         }
         else
             AssertReleaseFailed();
-        /** @todo MSI-X */
-    }
-    else /* Not available. */
-        AssertLogRelMsgFailed(("VFIO#%d.%u: Tried to reconfigure interrupt with unavailable mode %u\n",
-                               pThis->iInstance, pFun->uPciFun, uVfioIrq));
 
-    rc = pciVfioIrqPollerSwitchMode(pThis, pFun, uVfioIrq, false /*fWait*/);
-    if (RT_FAILURE(rc))
-        return PDMDevHlpVMSetError(pThis->pDevIns, rc, RT_SRC_POS,
-                                   N_("Switching the IRQ poller mode failed"));
+        rc = pciVfioIrqPollerSwitchMode(pThis, pFun, uVfioIrq, false /*fWait*/);
+        if (RT_FAILURE(rc))
+            return PDMDevHlpVMSetError(pThis->pDevIns, rc, RT_SRC_POS,
+                                       N_("Switching the IRQ poller mode failed"));
+    }
 
     return VINF_SUCCESS;
 }
@@ -1266,6 +1369,13 @@ DECLINLINE(void) pciVfioCfgSpaceSetInterceptU32(PVFIOPCIFUN pFun, uint32_t off, 
 }
 
 
+DECLINLINE(void) pciVfioCfgSpaceSetInterceptRoU32(PVFIOPCIFUN pFun, uint32_t off, uint8_t fRd)
+{
+    pciVfioCfgSpaceSetInterceptRoU16(pFun, off,     fRd);
+    pciVfioCfgSpaceSetInterceptRoU16(pFun, off + 2, fRd);
+}
+
+
 DECLINLINE(uint8_t) pciVfioCfgSpaceGetInterceptRd(PVFIOPCIFUN pFun, uint32_t off)
 {
     AssertReturn(off < sizeof(pFun->abPciCfgIntercept) * 8 / 4, VFIO_PCI_CFG_SPACE_ACCESS_INVALID);
@@ -1285,6 +1395,107 @@ DECLINLINE(uint8_t) pciVfioCfgSpaceGetInterceptWr(PVFIOPCIFUN pFun, uint32_t off
     uint8_t  cShift  = (off & 0x1) ? 4 + 2 : 2;
 
     return (pFun->abPciCfgIntercept[offByte] >> cShift) & 0x3;
+}
+
+
+static int pciVfioTrySetupMsix(PVFIOPCI pThis, PVFIOPCIFUN pFun, PPDMPCIDEV pPciDev, uint8_t offCap)
+{
+    PPDMDEVINS pDevIns = pThis->pDevIns;
+
+    /*
+     * For now we will only support MSI-X if the Table and PBA are on a dedicated BAR and are separated by
+     * a page size alignment.
+     */
+    /** @todo Our own MSI-X support is not very efficient as the Table and PBA are standard MMIO regions
+     * causing page faults and emulation when the guest accesses it, even for reads. They could be made
+     * MMIO2 regions with a write protection layer on top, so only write accesses are faulting.
+     * However I don't feel like fixing that just now and deal with saved states compatibility and testing
+     * each and every device emulation supporting MSI-X, so we will do everything on our own here and maybe
+     * port that over later. */
+
+    /* First get at the information from the capability. */
+    uint16_t u16Mmc = 0;
+    int rc = pciVfioCfgSpaceReadU16(pFun, offCap + 2, &u16Mmc);
+    if (RT_FAILURE(rc))
+        return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                   N_("Failed to read MSI-X message control register with %Rrc"), rc);
+
+    uint32_t u32TblCfg = 0;
+    rc = pciVfioCfgSpaceReadU32(pFun, offCap + 4, &u32TblCfg);
+    if (RT_FAILURE(rc))
+        return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                   N_("Failed to read MSI-X table config register with %Rrc"), rc);
+
+    uint32_t u32PbaCfg = 0;
+    rc = pciVfioCfgSpaceReadU32(pFun, offCap + 8, &u32PbaCfg);
+    if (RT_FAILURE(rc))
+        return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                   N_("Failed to read MSI-X PBA config register with %Rrc"), rc);
+
+    uint16_t cVectors = (u16Mmc & 0x7ff) + 1;
+    uint8_t  uTblBir  = u32TblCfg & 0x7;
+    uint8_t  uPbaBir  = u32PbaCfg & 0x7;
+    uint32_t offTbl   = u32TblCfg & UINT32_C(0xfffffff8);
+    uint32_t offPba   = u32PbaCfg & UINT32_C(0xfffffff8);
+
+    if (   uTblBir >= 6                                            /* 6 and 7 are reserved, indicates a broken device. */
+        || uTblBir != uPbaBir                                      /* Same region */
+        || uTblBir != pFun->iBarMsix                               /* BAR doesn't match what VFIO presented to us. */
+        || offTbl != 0                                             /* Table must come first, indicating this is a dedicated region for MSI-X. */
+        || offPba <= offTbl                                        /* PBA must not intersect table. */
+        /*|| offPba != (offPba & ~GUEST_PAGE_SIZE)*/                 /* Page sized alignment between table and PBA. */
+        || cVectors != pFun->acIrqVectors[VFIO_PCI_MSIX_IRQ_INDEX] /* The indicated table size must match what VFIO reported as number of IRQ vectors. */
+       )
+    {
+        /* Just log and don't set an error. */
+        LogRel(("VFIO#%d.%u: MSI-X not supported for this device as it doesn't meet the requirements: uTblBir=%u uPbaBir=%u offTbl=%#x offPba=%#x cVectors=%u cVfioVectors=%u\n",
+                pThis->iInstance, pFun->uPciFun, uTblBir, uPbaBir, offTbl, offPba, cVectors, pFun->acIrqVectors[VFIO_PCI_MSIX_IRQ_INDEX]));
+        return VERR_NOT_SUPPORTED;
+    }
+
+    /* Clear the BAR containing the MSI-X region so it doesn't get mapped later on. */
+    Assert(pFun->aBars[uTblBir].bType == 2);
+    pFun->aBars[uTblBir].bType = 0;
+
+    /* Get going setting up the MSI-X state:
+     *    1. Allocate a suitable MMIO2 region which can hold both states.
+     *    2. Create the physical write handler.
+     */
+    uint32_t const cbMsix = /*  RT_ALIGN_32(cVectors * VBOX_MSIX_ENTRY_SIZE, GUEST_PAGE_SIZE)
+                            +*/ RT_ALIGN_32(offPba + RT_MAX(8, cVectors / 8), GUEST_PAGE_SIZE);
+    rc = PDMDevHlpPCIIORegionCreateMmio2Ex(pDevIns, pPciDev, uTblBir, cbMsix,
+                                           PCI_ADDRESS_SPACE_MEM_PREFETCH, 0 /*fFlags*/,
+                                           /*pciVfioMsixMapUnmap*/ NULL, "MSI-X", (void **)&pFun->pbMsix, &pFun->hMsix);
+    AssertLogRelRCReturn(rc, PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                                 N_("Failed to allocate %zu bytes of MSI-X state"), cbMsix));
+
+#if 0
+    rc = PDMDevHlpPGMHandlerPhysicalTypeRegister(pThis->pDevIns, PGMPHYSHANDLERKIND_WRITE,
+                                                 pciVfioMsixWriteHandler, "VFIO MSI-X", &pFun->hMsixWrHndType);
+    AssertRCReturn(rc, rc);
+#endif
+
+    pFun->paMsixTbl  = (PMSIXTBLENTRY)(pFun->pbMsix + offTbl);
+    pFun->pbmMsixPba = (volatile uint64_t *)(pFun->pbMsix + offPba);
+
+    /* Each vector is masked by default. */
+    PMSIXTBLENTRY pMsixEntry = (PMSIXTBLENTRY)pFun->paMsixTbl;
+    for (uint16_t i = 0; i < cVectors; i++)
+    {
+        pMsixEntry->u32VecCtrl = RT_BIT(0);
+        pMsixEntry++;
+    }
+
+    /* Configure the capability if everything succeeded. */
+    pFun->offMsixCtrl = offCap + 2;
+    PDMPciDevSetWord( pPciDev, offCap + 2, u16Mmc);           /* Message control */
+    PDMPciDevSetDWord(pPciDev, offCap + 4, offTbl | uTblBir); /* Table config */
+    PDMPciDevSetDWord(pPciDev, offCap + 8, offPba | uPbaBir); /* PBA config   */
+    pciVfioCfgSpaceSetInterceptU16(  pFun, offCap + 2, VFIO_PCI_CFG_SPACE_ACCESS_DO_DEFAULT, VFIO_PCI_CFG_SPACE_ACCESS_EMULATE);    /* Message Control */
+    pciVfioCfgSpaceSetInterceptRoU32(pFun, offCap + 4, VFIO_PCI_CFG_SPACE_ACCESS_DO_DEFAULT);                                       /* Table config */
+    pciVfioCfgSpaceSetInterceptRoU32(pFun, offCap + 8, VFIO_PCI_CFG_SPACE_ACCESS_DO_DEFAULT);                                       /* PBA config */
+
+    return VINF_SUCCESS;
 }
 
 
@@ -1451,8 +1662,13 @@ static int pciVfioCfgSpaceParseCapabilities(PVFIOPCI pThis, PVFIOPCIFUN pFun, PP
             }
             case VBOX_PCI_CAP_ID_MSIX:
             {
-                LogRel(("VFIO#%d.%u: Cap[%#x]: MSI-X -> unsupported\n", pThis->iInstance, pFun->uPciFun, offCap));
-                /** @todo */
+                LogRel(("VFIO#%d.%u: Cap[%#x]: MSI-X -> emulate\n", pThis->iInstance, pFun->uPciFun, offCap));
+                rc = pciVfioTrySetupMsix(pThis, pFun, pPciDev, offCap);
+                if (RT_SUCCESS(rc))
+                {
+                    fSupported = true;
+                    cbCap      = 12;
+                }
                 break;
             }
             case VBOX_PCI_CAP_ID_SATA: LogRel(("VFIO#%d.%u: Cap[%#x]: Serial ATA HBA -> unsupported\n", pThis->iInstance, pFun->uPciFun, offCap));        break;
@@ -1660,8 +1876,6 @@ static int pciVfioCfgSpaceSetup(PVFIOPCIFUN pFun, PPDMPCIDEV pPciDev)
                 AssertReleaseFailed();
         }
     }
-
-    PDMPciDevSetInterruptPin(pPciDev, 0x01); /* A */
 
     return VINF_SUCCESS;
 }
@@ -2006,6 +2220,25 @@ static DECLCALLBACK(VBOXSTRICTRC) pciVfioConfigWrite(PPDMDEVINS pDevIns, PPDMPCI
                     LogRel(("VFIO#%d.%u: Failed to update MSI control register in device (%Rrc)", pThis->iInstance, pFun->uPciFun, rc));
                 rc = VINF_PDM_PCI_DO_DEFAULT; /* Need to update our internal MSI state. */
             }
+            else if (   pFun->offMsixCtrl == uAddress
+                     && cb == sizeof(uint16_t))
+            {
+                bool const fMsixEnabled = RT_BOOL(u32Value & RT_BIT(15));
+                if (fMsixEnabled != (pFun->uIrqModeCur == VFIO_PCI_MSIX_IRQ_INDEX))
+                {
+                    rc = pciVfioIrqReconfigure(pThis, pFun, VFIO_PCI_MSIX_IRQ_INDEX, fMsixEnabled ? pFun->acIrqVectors[VFIO_PCI_MSIX_IRQ_INDEX] : 0);
+                    if (RT_FAILURE(rc))
+                        LogRel(("VFIO#%d.%u: Failed to reconfigure the MSI-X interrupt config of the device, expect a broken device (%Rrc)\n",
+                                pThis->iInstance, pFun->uPciFun, rc));
+                }
+
+                /* Now write to the device. */
+                rc = pciVfioConfigPassthroughWrite(pFun, uAddress, cb, u32Value);
+                if (RT_FAILURE(rc))
+                    LogRel(("VFIO#%d.%u: Failed to update MSI-X control register in device (%Rrc)", pThis->iInstance, pFun->uPciFun, rc));
+                PDMPciDevSetWord(pPciDev, uAddress, (uint16_t)u32Value);
+                rc = VINF_SUCCESS;
+            }
             else
                 AssertFailed();
             break;
@@ -2118,6 +2351,7 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
         pFun->iFdWakeup      = -1;
         pFun->fVga           = false;
         pFun->fInterceptMmio = false;
+        pFun->iBarMsix       = UINT8_MAX;
         pFun->offMsiCtrl     = 0;
         pFun->uIrqModeCur    = UINT8_MAX;
         pFun->uIrqModeNew    = UINT8_MAX;
@@ -2440,6 +2674,33 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
                 return rc;
         }
 
+        /* Create the MMIO region mappings now. */
+        for (uint8_t i = 0; i < RT_ELEMENTS(pFun->aBars); i++)
+        {
+            /* PIO regions where created before. */
+            if (pFun->aBars[i].bType == 2)
+            {
+                if (pFun->fInterceptMmio)
+                {
+                    rc = PDMDevHlpMmioCreate(pDevIns, pFun->aBars[i].cbRegion, pPciDev, i /*iPciRegion*/,
+                                             pciVfioMmioWrite, pciVfioMmioRead, &pFun->aBars[i],
+                                             IOMMMIO_FLAGS_READ_PASSTHRU | IOMMMIO_FLAGS_WRITE_PASSTHRU, "MMIO",
+                                             &pFun->aBars[i].hnd.hMmio);
+                    AssertLogRelRCReturn(rc, rc);
+
+                    rc = PDMDevHlpPCIIORegionRegisterMmioEx(pDevIns, pPciDev, i, pFun->aBars[i].cbRegion, pFun->aBars[i].enmAddrSpace,
+                                                            pFun->aBars[i].hnd.hMmio, NULL);
+                }
+                else
+                    rc = PDMDevHlpPCIIORegionCreateMmio2FromExistingEx(pDevIns, pPciDev, i, pFun->aBars[i].cbRegion,
+                                                                       pFun->aBars[i].enmAddrSpace,
+                                                                       "MMIO", (void *)pFun->aBars[i].u.pvMmio,
+                                                                       &pFun->aBars[i].hnd.hMmio2);
+
+                AssertLogRelRCReturn(rc, rc);
+            }
+        }
+
         /* Create wakeup eventfd for IRQ poller. */
         rc = pciVfioLnxEventfd2(0 /*uValInit*/, 0 /*fFlags*/, &pFun->iFdWakeup);
         if (RT_FAILURE(rc))
@@ -2453,10 +2714,18 @@ static DECLCALLBACK(int) pciVfioConstruct(PPDMDEVINS pDevIns, int iInstance, PCF
                                    0 /* cbStack */, RTTHREADTYPE_IO, szDev);
         AssertLogRelRCReturn(rc, rc);
 
-        rc = pciVfioIrqReconfigure(pThis, pFun, VFIO_PCI_INTX_IRQ_INDEX, pFun->acIrqVectors[VFIO_PCI_INTX_IRQ_INDEX]);
-        if (RT_FAILURE(rc))
-            return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
-                                       N_("Failed to set initial interrupt mode to INTx"));
+        /* SR-IOV devices don't offer INTx. */
+        if (pFun->acIrqVectors[VFIO_PCI_INTX_IRQ_INDEX])
+        {
+            PDMPciDevSetInterruptPin(pPciDev, 0x01); /* A */
+
+            rc = pciVfioIrqReconfigure(pThis, pFun, VFIO_PCI_INTX_IRQ_INDEX, pFun->acIrqVectors[VFIO_PCI_INTX_IRQ_INDEX]);
+            if (RT_FAILURE(rc))
+                return PDMDevHlpVMSetError(pDevIns, rc, RT_SRC_POS,
+                                           N_("Failed to set initial interrupt mode to INTx"));
+        }
+        else
+            PDMPciDevSetInterruptPin(pPciDev, 0);
 
         /* Subsequent function should use the same major as the previous one. */
         iPciDevNo = PDMPCIDEVREG_DEV_NO_SAME_AS_PREV;

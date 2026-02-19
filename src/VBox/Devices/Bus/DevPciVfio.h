@@ -1,4 +1,4 @@
-/* $Id: DevPciVfio.h 113080 2026-02-19 09:11:45Z alexander.eichner@oracle.com $ */
+/* $Id: DevPciVfio.h 113100 2026-02-19 19:37:50Z alexander.eichner@oracle.com $ */
 /** @file
  * PCI passthrough device emulation using VFIO/IOMMUFD - Header for building on too old Linux systems.
  */
@@ -137,6 +137,16 @@ AssertCompileSize(struct vfio_region_info, 4 * sizeof(uint32_t) + 2 * sizeof(uin
 #define VFIO_REGION_INFO_FLAG_MMAP  RT_BIT_32(2)
 #define VFIO_REGION_INFO_FLAG_CAPS  RT_BIT_32(3)
 
+
+struct vfio_info_cap_header
+{
+    uint16_t id;
+    uint16_t version;
+    uint32_t next;
+};
+AssertCompileSize(struct vfio_info_cap_header, 2 * sizeof(uint16_t) + sizeof(uint32_t));
+
+#define VFIO_REGION_INFO_CAP_MSIX_MAPPABLE  3
 
 struct vfio_irq_info
 {
