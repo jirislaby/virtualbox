@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113092 2026-02-19 15:04:45Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113104 2026-02-20 13:57:26Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -152,6 +152,11 @@ protected:
     /** Prepares connections. */
     virtual void prepareConnections() RT_OVERRIDE RT_FINAL;
 
+    /** Handles show @a pEvent. */
+    virtual void showEvent(QShowEvent *pEvent) RT_OVERRIDE RT_FINAL;
+    /** Handles key-release @a pEvent. */
+    virtual void keyReleaseEvent(QKeyEvent *pEvent) RT_OVERRIDE RT_FINAL;
+
 private slots:
 
     /** Handles @a pButton click. */
@@ -164,6 +169,9 @@ private:
 
     /** Holds the button-box instance. */
     QIDialogButtonBox *m_pButtonBox;
+
+    /** Holds whether item polished. */
+    bool  m_fPolished;
 };
 
 /** UINotificationObjectItem extension for notification-progress. */

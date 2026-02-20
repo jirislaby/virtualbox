@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113092 2026-02-19 15:04:45Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113104 2026-02-20 13:57:26Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -320,6 +320,7 @@ UINotificationQuestionItem::UINotificationQuestionItem(QWidget *pParent,
                                                        bool fExtended)
     : UINotificationObjectItem(pParent, pObject, fExtended)
     , m_pButtonBox(0)
+    , m_fPolished(false)
 {
 }
 
@@ -378,6 +379,44 @@ void UINotificationQuestionItem::prepareConnections()
 
     /* Connect buttons: */
     connect(m_pButtonBox, &QIDialogButtonBox::clicked, this, &UINotificationQuestionItem::sltHandleButtonClick);
+}
+
+void UINotificationQuestionItem::showEvent(QShowEvent *pEvent)
+{
+    /* Call to base-class: */
+    UINotificationObjectItem::showEvent(pEvent);
+
+    /* Polish once: */
+    if (!m_fPolished)
+    {
+        m_fPolished = true;
+
+        /* Make sure extended type question focused: */
+        if (isExtended())
+            setFocus();
+    }
+}
+
+void UINotificationQuestionItem::keyReleaseEvent(QKeyEvent *pEvent)
+{
+    switch (pEvent->key())
+    {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+            /* Click Ok button on Enter: */
+            m_pButtonBox->button(QDialogButtonBox::Ok)->click();
+            pEvent->accept();
+            break;
+        case Qt::Key_Escape:
+            /* Click Cancel button on Escape: */
+            m_pButtonBox->button(QDialogButtonBox::Cancel)->click();
+            pEvent->accept();
+            break;
+        default:
+            /* Call to base-class: */
+            UINotificationObjectItem::keyReleaseEvent(pEvent);
+            break;
+    }
 }
 
 void UINotificationQuestionItem::sltHandleButtonClick(QAbstractButton *pButton)
