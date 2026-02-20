@@ -11,7 +11,7 @@
 # pylint: disable=invalid-name
 # pylint: disable=multiple-statements
 # pylint: disable=line-too-long
-# $Id: configure.py 113098 2026-02-19 17:23:36Z andreas.loeffler@oracle.com $
+# $Id: configure.py 113103 2026-02-20 10:50:21Z andreas.loeffler@oracle.com $
 #
 # The following checks for the right (i.e. most recent) Python binary available
 # and re-starts the script using that binary (like a shell wrapper).
@@ -90,7 +90,7 @@ SPDX-License-Identifier: GPL-3.0-only
 # External Python modules or other dependencies are not allowed!
 #
 
-__revision__ = "$Revision: 113098 $"
+__revision__ = "$Revision: 113103 $"
 
 import argparse
 import collections;
@@ -276,7 +276,6 @@ class PkgMgrVarBREW:
     """
     PREFIX     = "--prefix";
 
-
 class PkgMgrVarVCPKG:
     """
     Enumeration for vcpkg variables.
@@ -287,7 +286,7 @@ class PkgMgrVar:
     """"
     Class which holds the implemented variables for package managers.
 
-    Note: Not all package manager implement all variables.
+    Note: Not all package managers implement all variables.
     """
     BINDIR     = { PkgMgr.PKGCFG: PkgMgrVarPKGCFG.BINDIR };
     CFLAGS     = { PkgMgr.PKGCFG: PkgMgrVarPKGCFG.CFLAGS };
@@ -900,10 +899,15 @@ def getPackageVar(sPackageName, enmPkgMgrVar : PkgMgrVar):
     try:
         if not enmPkgMgrVar:
             return True, '';
-        if g_enmHostOS in [ BuildTarget.LINUX, BuildTarget.SOLARIS, BuildTarget.DARWIN ]:
+        asCmd = None;
+        if  g_enmHostOS in [ BuildTarget.LINUX, BuildTarget.SOLARIS, BuildTarget.DARWIN ] \
+        and PkgMgr.PKGCFG in enmPkgMgrVar:
             # Use pkg-config on Linux and Solaris.
-            # On Darwin we ask pkg-config first, then try brew down below.
-            sCmd = f"pkg-config {enmPkgMgrVar[PkgMgr.PKGCFG]} {shlex.quote(sPackageName)}"
+            # On Darwin we ask pkg-config (needs to be installed through brew) first,
+            # then try brew down below.
+            asCmd = [ PkgMgr.PKGCFG,
+                      enmPkgMgrVar[PkgMgr.PKGCFG],
+                      shlex.quote(sPackageName) ];
         elif g_enmHostOS == BuildTarget.WINDOWS:
             # Detect VCPKG.
             # See: https://learn.microsoft.com/en-us/vcpkg/ + https://vcpkg.io
@@ -912,15 +916,17 @@ def getPackageVar(sPackageName, enmPkgMgrVar : PkgMgrVar):
                 sVcPkgRoot = g_oEnv.get('config_vcpkg_root', os.environ['VCPKG_ROOT'] if 'VCPKG_ROOT' in os.environ else None);
                 if sVcPkgRoot:
                     printVerbose(1, f"vcpkg found at '{sVcPkgRoot}'");
+                    asCmd = [ sCmd ];
                     ## @todo Implement this.
                 else:
                     printError('vcpkg found, but VCPKG_ROOT is not defined');
         else:
             raise RuntimeError('Unsupported OS');
 
-        if sCmd:
-            oProc = subprocess.run([ sCmd ], shell = True, check = False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, universal_newlines = True);
-            if oProc.returncode == 0 and oProc.stdout.strip():
+        if asCmd:
+            oProc = subprocess.run(asCmd, shell = True, check = False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, universal_newlines = True);
+            if  oProc.returncode == 0 \
+            and oProc.stdout:
                 sRet = oProc.stdout.strip();
                 # Output parsing.
                 if enmPkgMgrVar == PkgMgrVar.INCDIR:
@@ -928,10 +934,14 @@ def getPackageVar(sPackageName, enmPkgMgrVar : PkgMgrVar):
                 return True, sRet;
 
         # If pkg-config fails on Darwin, try asking brew instead.
-        if g_enmHostOS == BuildTarget.DARWIN:
-            sCmd = f'brew {enmPkgMgrVar[PkgMgr.BREW]} {sPackageName}';
-            oProc = subprocess.run([ sCmd ], shell = True, check = False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, universal_newlines = True);
-            if oProc.returncode == 0 and oProc.stdout.strip():
+        if  g_enmHostOS == BuildTarget.DARWIN \
+        and PkgMgr.BREW in enmPkgMgrVar:
+            asCmd = [ PkgMgr.BREW,
+                      enmPkgMgrVar[PkgMgr.BREW],
+                      sPackageName ];
+            oProc = subprocess.run(asCmd, shell = True, check = False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, universal_newlines = True);
+            if  oProc.returncode == 0 \
+            and oProc.stdout:
                 sRet = oProc.stdout.strip();
                 return True, sRet;
 
