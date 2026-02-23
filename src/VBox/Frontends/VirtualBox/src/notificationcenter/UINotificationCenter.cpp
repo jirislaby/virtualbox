@@ -1,4 +1,4 @@
-/* $Id: UINotificationCenter.cpp 113120 2026-02-23 13:17:49Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationCenter.cpp 113126 2026-02-23 15:50:14Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationCenter class implementation.
  */
@@ -1034,11 +1034,26 @@ void UINotificationCenter::adjustGeometry()
     /* Acquire item layout spacing: */
     const int iSpacing = m_pLayoutItems->spacing();
 
-    /* Acquire minimum button width (notification-center can't shorter than this hint): */
-    const int iMinimumWidth = m_pButtonOpen->minimumSizeHint().width() + iL + iR;
-    /* Invent some default width for simple mode, like 200px for example: */
-    int iMaximumWidth = !isExtendedMode() ? 200 : iParentWidth;
-    /* Make sure maximum width is more or equal to minimum one: */
+    /* Gather suitable minumum and maximum notification-center widths: */
+    int iMinimumWidth = 0;
+    int iMaximumWidth = 0;
+    if (!isExtendedMode())
+    {
+        /* Acquire minimum Open button width
+         * (notification-center can't be shorter than this hint): */
+        const int iButtonWidthHint = m_pButtonOpen->minimumSizeHint().width() + iL + iR;
+        /* Make sure minimum width is no less than button width hint: */
+        iMinimumWidth = qMax(iMinimumWidth, iButtonWidthHint);
+
+        /* Invent some maximum width for simple mode, like 200px for example: */
+        iMaximumWidth = 200;
+    }
+    else
+    {
+        /* Invent some maximum width for extended mode, parent width: */
+        iMaximumWidth = iParentWidth;
+    }
+    /* Make sure maximum width is no less than minimum one: */
     iMaximumWidth = qMax(iMaximumWidth, iMinimumWidth);
     /* Make sure maximum width is more or equal to minimum width hint: */
     iMaximumWidth = qMax(iMaximumWidth, minimumSizeHint().width());
