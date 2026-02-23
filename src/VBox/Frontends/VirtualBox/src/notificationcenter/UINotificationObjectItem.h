@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113104 2026-02-20 13:57:26Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113122 2026-02-23 14:06:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -110,12 +110,12 @@ protected:
     QLabel          *m_pLabelName;
     /** Holds the help button instance. */
     QIToolButton    *m_pButtonHelp;
-    /** Holds the forget button instance. */
-    QPushButton     *m_pButtonForget;
     /** Holds the close button instance. */
     QIToolButton    *m_pButtonClose;
     /** Holds the details label instance. */
     QIRichTextLabel *m_pLabelDetails;
+    /** Holds the forget button instance. */
+    QPushButton     *m_pButtonForget;
 
     /** Holds whether item is hovered. */
     bool  m_fHovered;
