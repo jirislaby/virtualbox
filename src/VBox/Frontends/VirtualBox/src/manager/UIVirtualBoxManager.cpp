@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.cpp 112957 2026-02-11 15:18:35Z sergey.dubov@oracle.com $ */
+/* $Id: UIVirtualBoxManager.cpp 113130 2026-02-23 16:10:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class implementation.
  */
@@ -2073,7 +2073,7 @@ void UIVirtualBoxManager::sltPerformResetMachine()
     AssertMsg(!machineNames.isEmpty(), ("This action should not be allowed!"));
 
     /* Confirm reseting VM: */
-    if (!msgCenter().confirmResetMachine(machineNames.join(", ")))
+    if (!UINotificationQuestion::confirmResetMachine(machineNames.join(", ")))
         return;
 
     /* For each selected item: */

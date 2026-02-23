@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113124 2026-02-23 14:09:43Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113130 2026-02-23 16:10:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -35,6 +35,19 @@
 
 /* static */
 QMap<QString, QUuid> UINotificationQuestion::m_questions = QMap<QString, QUuid>();
+
+/* static */
+bool UINotificationQuestion::confirmResetMachine(const QString &strNames)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Reset following machines?"),
+        QApplication::translate("UIMessageCenter", "<p>Do you really want to reset the following virtual machines?</p>"
+                                                   "<p><b>%1</b></p><p>This will cause any unsaved data in applications running "
+                                                   "inside it to be lost.</p>").arg(strNames),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Reset", "machine") /* ok button text */,
+        "confirmResetMachine" /* internal name */);
+}
 
 /* static */
 bool UINotificationQuestion::confirmSnapshotRemoval(const QString &strName)

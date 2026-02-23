@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.h 113121 2026-02-23 13:36:42Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.h 113130 2026-02-23 16:10:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class declaration.
  */
@@ -283,8 +283,6 @@ public:
 
     /** @name Common warnings.
       * @{ */
-        bool confirmResetMachine(const QString &strNames) const;
-
         bool confirmCreatingPath(const QString &strPath, QWidget *pParent = 0);
         bool confirmSettingsDiscarding(QWidget *pParent = 0) const;
         bool confirmSettingsReloading(QWidget *pParent = 0) const;

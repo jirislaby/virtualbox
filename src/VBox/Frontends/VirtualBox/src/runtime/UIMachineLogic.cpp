@@ -1,4 +1,4 @@
-/* $Id: UIMachineLogic.cpp 113051 2026-02-17 09:39:27Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineLogic.cpp 113130 2026-02-23 16:10:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineLogic class implementation.
  */
@@ -3070,7 +3070,7 @@ void UIMachineLogic::showBootFailureDialog()
 void UIMachineLogic::reset(bool fShowConfirmation)
 {
     if (   !fShowConfirmation
-        || msgCenter().confirmResetMachine(machineName()))
+        || UINotificationQuestion::confirmResetMachine(machineName()))
     {
         const bool fSuccess = uimachine()->reset();
         if (fSuccess)

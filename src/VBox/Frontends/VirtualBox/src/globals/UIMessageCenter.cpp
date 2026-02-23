@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 113121 2026-02-23 13:36:42Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 113130 2026-02-23 16:10:01Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -619,17 +619,6 @@ bool UIMessageCenter::cannotRemountMedium(const CMachine &machine, const UIMediu
           strMessage.arg(medium.isHostDrive() ? medium.name() : medium.location(), CMachine(machine).GetName()),
           UIErrorString::formatErrorInfo(machine));
     return false;
-}
-
-bool UIMessageCenter::confirmResetMachine(const QString &strNames) const
-{
-    return questionBinary(0, MessageType_Question,
-                          tr("<p>Do you really want to reset the following virtual machines?</p>"
-                             "<p><b>%1</b></p><p>This will cause any unsaved data "
-                             "in applications running inside it to be lost.</p>")
-                             .arg(strNames),
-                          "confirmResetMachine" /* auto-confirm id */,
-                          tr("Reset", "machine"));
 }
 
 bool UIMessageCenter::confirmCreatingPath(const QString &strPath, QWidget *pParent /* = 0 */)
