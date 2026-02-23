@@ -1,4 +1,4 @@
-/* $Id: NEMR3Native-linux-x86.cpp 112882 2026-02-09 09:32:45Z knut.osmundsen@oracle.com $ */
+/* $Id: NEMR3Native-linux-x86.cpp 113118 2026-02-23 11:51:27Z alexander.eichner@oracle.com $ */
 /** @file
  * NEM - Native execution manager, native ring-3 Linux backend.
  */
@@ -1189,23 +1189,10 @@ static int nemHCLnxExportState(PVM pVM, PVMCPU pVCpu, PCPUMCTX pCtx, struct kvm_
             if (   enmType == TRPM_HARDWARE_INT
                 || enmType == TRPM_SOFTWARE_INT)
             {
-                /** @todo Use KVM_INTERRUPT to inject interrupts into the guest when the KVM APIC is used
-                 *        as the other variant doesn't work, ned to find out why. */
-                if (pVM->nem.s.fKvmApic)
-                {
-                    struct kvm_interrupt Irq = { bTrapNo };
-                    int rcLnx = ioctl(pVCpu->nem.s.fdVCpu, KVM_INTERRUPT, &Irq);
-                    if (!rcLnx)
-                        TRPMResetTrap(pVCpu);
-                    AssertLogRelMsgReturn(rcLnx == 0 || errno == EEXIST, ("rcLnx=%d errno=%d\n", rcLnx, errno), VERR_NEM_IPE_5);
-                }
-                else
-                {
-                    KvmEvents.interrupt.soft     = enmType == TRPM_SOFTWARE_INT;
-                    KvmEvents.interrupt.nr       = bTrapNo;
-                    KvmEvents.interrupt.injected = 1;
-                    TRPMResetTrap(pVCpu);
-                }
+                KvmEvents.interrupt.soft     = enmType == TRPM_SOFTWARE_INT;
+                KvmEvents.interrupt.nr       = bTrapNo;
+                KvmEvents.interrupt.injected = 1;
+                TRPMResetTrap(pVCpu);
                 STAM_REL_COUNTER_INC(&pVCpu->nem.s.StatExportPendingInterrupt);
             }
             else
