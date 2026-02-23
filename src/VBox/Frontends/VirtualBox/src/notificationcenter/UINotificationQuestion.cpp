@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113077 2026-02-18 18:28:10Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113121 2026-02-23 13:36:42Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -35,6 +35,21 @@
 
 /* static */
 QMap<QString, QUuid> UINotificationQuestion::m_questions = QMap<QString, QUuid>();
+
+/* static */
+bool UINotificationQuestion::confirmSnapshotRemoval(const QString &strName)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Deleting the snapshot?"),
+        QApplication::translate("UIMessageCenter", "<p>Deleting the snapshot will cause the state information saved in it to be "
+                                                   "lost, and storage data spread over several image files that VirtualBox has "
+                                                   "created together with the snapshot will be merged into one file. This can be "
+                                                   "a lengthy process, and the information in the snapshot cannot be "
+                                                   "recovered.</p></p>Are you sure you want to delete the selected snapshot "
+                                                   "<b>%1</b>?</p>").arg(strName),
+        QStringList() << QString() /* cancel button text */
+                      << tr("Delete") /* ok button text */);
+}
 
 UINotificationQuestion::UINotificationQuestion(const QString &strName,
                                                const QString &strDetails,

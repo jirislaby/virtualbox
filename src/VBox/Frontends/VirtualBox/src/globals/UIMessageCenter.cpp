@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 113062 2026-02-17 12:37:07Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 113121 2026-02-23 13:36:42Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -942,37 +942,6 @@ int UIMessageCenter::confirmSnapshotRestoring(const QString &strSnapshotName, bo
                    AlertButton_Cancel | AlertButtonOption_Default | AlertButtonOption_Escape,
                    0 /* 3rd button */,
                    tr("Restore"), tr("Cancel"), QString() /* 3rd button text */);
-}
-
-bool UIMessageCenter::confirmSnapshotRemoval(const QString &strSnapshotName) const
-{
-    return questionBinary(0, MessageType_Question,
-                          tr("<p>Deleting the snapshot will cause the state information saved in it to be lost, and storage data spread over "
-                             "several image files that VirtualBox has created together with the snapshot will be merged into one file. "
-                             "This can be a lengthy process, and the information in the snapshot cannot be recovered.</p>"
-                             "</p>Are you sure you want to delete the selected snapshot <b>%1</b>?</p>")
-                             .arg(strSnapshotName),
-                          0 /* auto-confirm id */,
-                          tr("Delete") /* ok button text */,
-                          QString() /* cancel button text */,
-                          false /* ok button by default? */);
-}
-
-bool UIMessageCenter::warnAboutSnapshotRemovalFreeSpace(const QString &strSnapshotName,
-                                                        const QString &strTargetImageName,
-                                                        const QString &strTargetImageMaxSize,
-                                                        const QString &strTargetFileSystemFree) const
-{
-    return questionBinary(0, MessageType_Question,
-                          tr("<p>Deleting the snapshot %1 will temporarily need more storage space. In the worst case the size of image %2 will grow by %3, "
-                              "however on this filesystem there is only %4 free.</p><p>Running out of storage space during the merge operation can result in "
-                              "corruption of the image and the VM configuration, i.e. loss of the VM and its data.</p><p>You may continue with deleting "
-                              "the snapshot at your own risk.</p>")
-                              .arg(strSnapshotName, strTargetImageName, strTargetImageMaxSize, strTargetFileSystemFree),
-                          0 /* auto-confirm id */,
-                          tr("Delete") /* ok button text */,
-                          QString() /* cancel button text */,
-                          false /* ok button by default? */);
 }
 
 bool UIMessageCenter::confirmInstallExtensionPack(const QString &strPackName, const QString &strPackVersion,

@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.h 113077 2026-02-18 18:28:10Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.h 113121 2026-02-23 13:36:42Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion declarations.
  */
@@ -70,6 +70,9 @@ public:
     Question::Result result() const { return m_enmResult; }
     /** Defines the @a enmResult. */
     void setResult(Question::Result enmResult) { m_enmResult = enmResult; m_fDone = true; }
+
+    /** Confirms removal for the snapshot with @a strName specified. */
+    static bool confirmSnapshotRemoval(const QString &strName);
 
 protected:
 
