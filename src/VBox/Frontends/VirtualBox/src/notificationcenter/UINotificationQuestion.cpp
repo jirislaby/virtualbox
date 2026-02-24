@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113133 2026-02-24 09:00:05Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113135 2026-02-24 10:31:45Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -46,6 +46,7 @@ bool UINotificationQuestion::confirmResetMachine(const QString &strNames)
                                                    "inside it to be lost.</p>").arg(strNames),
         QStringList() << QString() /* cancel button text */
                       << QApplication::translate("UIMessageCenter", "Reset", "machine") /* ok button text */,
+        true /* Ok by default? */,
         "confirmResetMachine" /* internal name */);
 }
 
@@ -61,12 +62,14 @@ bool UINotificationQuestion::confirmSnapshotRemoval(const QString &strName)
                                                    "recovered.</p></p>Are you sure you want to delete the selected snapshot "
                                                    "<b>%1</b>?</p>").arg(strName),
         QStringList() << QString() /* cancel button text */
-                      << QApplication::translate("UIMessageCenter", "Delete") /* ok button text */);
+                      << QApplication::translate("UIMessageCenter", "Delete") /* ok button text */,
+        true /* Ok by default? */);
 }
 
 UINotificationQuestion::UINotificationQuestion(const QString &strName,
                                                const QString &strDetails,
                                                const QStringList &buttonNames,
+                                               bool fOkByDefault,
                                                const QString &strInternalName,
                                                const QString &strHelpKeyword)
     : UINotificationSimple(strName,
@@ -74,6 +77,7 @@ UINotificationQuestion::UINotificationQuestion(const QString &strName,
                            strInternalName,
                            strHelpKeyword)
     , m_buttonNames(buttonNames)
+    , m_fOkByDefault(fOkByDefault)
     , m_enmResult(Question::Result_Cancel)
     , m_fDone(false)
 {
@@ -90,6 +94,7 @@ void UINotificationQuestion::createQuestionInt(UINotificationCenter *pParent,
                                                const QString &strName,
                                                const QString &strDetails,
                                                const QStringList &buttonNames,
+                                               bool fOkByDefault,
                                                const QString &strInternalName,
                                                const QString &strHelpKeyword)
 {
@@ -110,6 +115,7 @@ void UINotificationQuestion::createQuestionInt(UINotificationCenter *pParent,
     const QUuid uId = pEffectiveParent->append(new UINotificationQuestion(strName,
                                                                           strDetails,
                                                                           buttonNames,
+                                                                          fOkByDefault,
                                                                           strInternalName,
                                                                           strHelpKeyword));
     if (!strInternalName.isEmpty())
@@ -121,6 +127,7 @@ int UINotificationQuestion::createBlockingQuestionInt(UINotificationCenter *pPar
                                                       const QString &strName,
                                                       const QString &strDetails,
                                                       const QStringList &buttonNames,
+                                                      bool fOkByDefault,
                                                       const QString &strInternalName,
                                                       const QString &strHelpKeyword)
 {
@@ -136,6 +143,7 @@ int UINotificationQuestion::createBlockingQuestionInt(UINotificationCenter *pPar
     QPointer<UINotificationQuestion> pQuestion = new UINotificationQuestion(strName,
                                                                             strDetails,
                                                                             buttonNames,
+                                                                            fOkByDefault,
                                                                             strInternalName,
                                                                             strHelpKeyword);
     const int iResult = pEffectiveParent->showBlocking(pQuestion);
@@ -147,6 +155,7 @@ int UINotificationQuestion::createBlockingQuestionInt(UINotificationCenter *pPar
 void UINotificationQuestion::createQuestion(const QString &strName,
                                             const QString &strDetails,
                                             const QStringList &buttonNames,
+                                            bool fOkByDefault,
                                             QWidget *pParent /* = 0 */)
 {
     /* Acquire notification-center, make sure it's present: */
@@ -154,13 +163,14 @@ void UINotificationQuestion::createQuestion(const QString &strName,
     AssertPtrReturnVoid(pCenter);
 
     /* Redirect to wrapper above: */
-    return createQuestionInt(pCenter, strName, strDetails, buttonNames, QString(), QString());
+    return createQuestionInt(pCenter, strName, strDetails, buttonNames, fOkByDefault, QString(), QString());
 }
 
 /* static */
 void UINotificationQuestion::createQuestion(const QString &strName,
                                             const QString &strDetails,
                                             const QStringList &buttonNames,
+                                            bool fOkByDefault,
                                             const QString &strInternalName,
                                             const QString &strHelpKeyword /* = QString() */,
                                             QWidget *pParent /* = 0 */)
@@ -170,13 +180,14 @@ void UINotificationQuestion::createQuestion(const QString &strName,
     AssertPtrReturnVoid(pCenter);
 
     /* Redirect to wrapper above: */
-    return createQuestionInt(pCenter, strName, strDetails, buttonNames,  strInternalName, strHelpKeyword);
+    return createQuestionInt(pCenter, strName, strDetails, buttonNames, fOkByDefault, strInternalName, strHelpKeyword);
 }
 
 /* static */
 int UINotificationQuestion::createBlockingQuestion(const QString &strName,
                                                    const QString &strDetails,
                                                    const QStringList &buttonNames,
+                                                   bool fOkByDefault,
                                                    QWidget *pParent /* = 0 */)
 {
     /* Acquire notification-center, make sure it's present: */
@@ -184,13 +195,14 @@ int UINotificationQuestion::createBlockingQuestion(const QString &strName,
     AssertPtrReturn(pCenter, 0);
 
     /* Redirect to wrapper above: */
-    return createBlockingQuestionInt(pCenter, strName, strDetails, buttonNames, QString(), QString());
+    return createBlockingQuestionInt(pCenter, strName, strDetails, buttonNames, fOkByDefault, QString(), QString());
 }
 
 /* static */
 int UINotificationQuestion::createBlockingQuestion(const QString &strName,
                                                    const QString &strDetails,
                                                    const QStringList &buttonNames,
+                                                   bool fOkByDefault,
                                                    const QString &strInternalName,
                                                    const QString &strHelpKeyword /* = QString() */,
                                                    QWidget *pParent /* = 0 */)
@@ -200,7 +212,7 @@ int UINotificationQuestion::createBlockingQuestion(const QString &strName,
     AssertPtrReturn(pCenter, 0);
 
     /* Redirect to wrapper above: */
-    return createBlockingQuestionInt(pCenter, strName, strDetails, buttonNames, strInternalName, strHelpKeyword);
+    return createBlockingQuestionInt(pCenter, strName, strDetails, buttonNames, fOkByDefault, strInternalName, strHelpKeyword);
 }
 
 /* static */

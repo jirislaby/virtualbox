@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113125 2026-02-23 15:45:01Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113135 2026-02-24 10:31:45Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -407,7 +407,16 @@ void UINotificationQuestionItem::showEvent(QShowEvent *pEvent)
 
         /* Make sure extended type question focused: */
         if (isExtended())
-            setFocus();
+        {
+            /* Check whether Ok button should be default one: */
+            UINotificationQuestion *pQuestion = question();
+            AssertPtrReturnVoid(pQuestion);
+            QPushButton *pButton = m_pButtonBox->button(  pQuestion->isOkByDefault()
+                                                        ? QDialogButtonBox::Ok
+                                                        : QDialogButtonBox::Cancel);
+            AssertPtrReturnVoid(pButton);
+            pButton->setFocus();
+        }
     }
 }
 
@@ -417,19 +426,32 @@ void UINotificationQuestionItem::keyReleaseEvent(QKeyEvent *pEvent)
     {
         case Qt::Key_Enter:
         case Qt::Key_Return:
-            /* Click Ok button on Enter: */
-            m_pButtonBox->button(QDialogButtonBox::Ok)->click();
+        {
+            /* Check whether Ok button should be default one: */
+            UINotificationQuestion *pQuestion = question();
+            AssertPtrReturnVoid(pQuestion);
+            /* Click Ok or Cancel button on Enter: */
+            QPushButton *pButton = m_pButtonBox->button(  pQuestion->isOkByDefault()
+                                                        ? QDialogButtonBox::Ok
+                                                        : QDialogButtonBox::Cancel);
+            AssertPtrReturnVoid(pButton);
+            pButton->click();
             pEvent->accept();
             break;
+        }
         case Qt::Key_Escape:
+        {
             /* Click Cancel button on Escape: */
             m_pButtonBox->button(QDialogButtonBox::Cancel)->click();
             pEvent->accept();
             break;
+        }
         default:
+        {
             /* Call to base-class: */
             UINotificationObjectItem::keyReleaseEvent(pEvent);
             break;
+        }
     }
 }
 

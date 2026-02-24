@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.h 113133 2026-02-24 09:00:05Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.h 113135 2026-02-24 10:31:45Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion declarations.
  */
@@ -62,6 +62,8 @@ public:
 
     /** Returns the button names. */
     QStringList buttonNames() const { return m_buttonNames; }
+    /** Returns whether Ok button should be default one. */
+    bool isOkByDefault() const { return m_fOkByDefault; }
 
     /** Returns the result. */
     Question::Result result() const { return m_enmResult; }
@@ -83,11 +85,13 @@ protected:
       * @param  strName          Brings the question name.
       * @param  strDetails       Brings the question details.
       * @param  buttonNames      Brings the list of button names.
+      * @param  fOkByDefault     Brings whether Ok button should be default one.
       * @param  strInternalName  Brings the question internal name.
       * @param  strHelpKeyword   Brings the question help keyword. */
     UINotificationQuestion(const QString &strName,
                            const QString &strDetails,
                            const QStringList &buttonNames,
+                           bool fOkByDefault,
                            const QString &strInternalName,
                            const QString &strHelpKeyword);
     /** Destructs question notification-object. */
@@ -100,12 +104,14 @@ private:
       * @param  strName          Brings the question name.
       * @param  strDetails       Brings the question details.
       * @param  buttonNames      Brings the list of button names.
+      * @param  fOkByDefault     Brings whether Ok button should be default one.
       * @param  strInternalName  Brings the question internal name.
       * @param  strHelpKeyword   Brings the question help keyword. */
     static void createQuestionInt(UINotificationCenter *pParent,
                                   const QString &strName,
                                   const QString &strDetails,
                                   const QStringList &buttonNames,
+                                  bool fOkByDefault,
                                   const QString &strInternalName,
                                   const QString &strHelpKeyword);
     /** Creates blocking question.
@@ -113,56 +119,66 @@ private:
       * @param  strName          Brings the question name.
       * @param  strDetails       Brings the question details.
       * @param  buttonNames      Brings the list of button names.
+      * @param  fOkByDefault     Brings whether Ok button should be default one.
       * @param  strInternalName  Brings the question internal name.
       * @param  strHelpKeyword   Brings the question help keyword. */
     static int createBlockingQuestionInt(UINotificationCenter *pParent,
                                          const QString &strName,
                                          const QString &strDetails,
                                          const QStringList &buttonNames,
+                                         bool fOkByDefault,
                                          const QString &strInternalName,
                                          const QString &strHelpKeyword);
 
     /** Creates question.
-      * @param  strName     Brings the question name.
-      * @param  strDetails  Brings the question details.
-      * @param  buttonNames  Brings the list of button names.
-      * @param  pParent     Brings the parent reference. */
+      * @param  strName       Brings the question name.
+      * @param  strDetails    Brings the question details.
+      * @param  buttonNames   Brings the list of button names.
+      * @param  fOkByDefault  Brings whether Ok button should be default one.
+      * @param  pParent       Brings the parent reference. */
     static void createQuestion(const QString &strName,
                                const QString &strDetails,
                                const QStringList &buttonNames,
+                               bool fOkByDefault,
                                QWidget *pParent = 0);
     /** Creates question.
       * @param  strName          Brings the question name.
       * @param  strDetails       Brings the question details.
-      * @param  buttonNames  Brings the list of button names.
+      * @param  buttonNames      Brings the list of button names.
+      * @param  fOkByDefault     Brings whether Ok button should be default one.
       * @param  strInternalName  Brings the question internal name.
       * @param  strHelpKeyword   Brings the question help keyword.
       * @param  pParent          Brings the local notification-center reference. */
     static void createQuestion(const QString &strName,
                                const QString &strDetails,
                                const QStringList &buttonNames,
+                               bool fOkByDefault,
                                const QString &strInternalName,
                                const QString &strHelpKeyword = QString(),
                                QWidget *pParent = 0);
     /** Creates blocking question.
-      * @param  strName      Brings the question name.
-      * @param  strDetails   Brings the question details.
-      * @param  buttonNames  Brings the list of button names.
-      * @param  pParent      Brings the parent reference. */
+      * @param  strName       Brings the question name.
+      * @param  strDetails    Brings the question details.
+      * @param  buttonNames   Brings the list of button names.
+      * @param  fOkByDefault  Brings whether Ok button should be default one.
+      * @param  pParent       Brings the parent reference. */
     static int createBlockingQuestion(const QString &strName,
                                       const QString &strDetails,
                                       const QStringList &buttonNames,
+                                      bool fOkByDefault,
                                       QWidget *pParent = 0);
     /** Creates blocking question.
       * @param  strName          Brings the question name.
       * @param  strDetails       Brings the question details.
       * @param  buttonNames      Brings the list of button names.
+      * @param  fOkByDefault     Brings whether Ok button should be default one.
       * @param  strInternalName  Brings the question internal name.
       * @param  strHelpKeyword   Brings the question help keyword.
       * @param  pParent          Brings the local notification-center reference. */
     static int createBlockingQuestion(const QString &strName,
                                       const QString &strDetails,
                                       const QStringList &buttonNames,
+                                      bool fOkByDefault,
                                       const QString &strInternalName,
                                       const QString &strHelpKeyword = QString(),
                                       QWidget *pParent = 0);
@@ -178,6 +194,8 @@ private:
 
     /** Holds the button names. */
     QStringList  m_buttonNames;
+    /** Holds whether Ok button should be default one. */
+    bool         m_fOkByDefault;
 
     /** Holds the question result. */
     Question::Result  m_enmResult;
