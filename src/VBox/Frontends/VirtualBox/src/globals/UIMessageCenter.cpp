@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 113139 2026-02-24 11:03:16Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 113148 2026-02-24 15:57:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -656,18 +656,6 @@ bool UIMessageCenter::confirmSettingsReloading(QWidget *pParent /* = 0 */) const
     setWarningShown("confirmSettingsReloading", false);
 
     return fResult;
-}
-
-int UIMessageCenter::confirmRemovingOfLastDVDDevice(QWidget *pParent /* = 0*/) const
-{
-    return questionBinary(pParent, MessageType_Info,
-                          tr("<p>Are you sure you want to delete the optical drive?</p>"
-                             "<p>You will not be able to insert any optical disks or ISO images "
-                             "or install the Guest Additions without it!</p>"),
-                          0 /* auto-confirm id */,
-                          tr("Remove", "medium") /* ok button text */,
-                          QString() /* cancel button text */,
-                          false /* ok button by default? */);
 }
 
 bool UIMessageCenter::confirmStorageBusChangeWithOpticalRemoval(QWidget *pParent /* = 0 */) const

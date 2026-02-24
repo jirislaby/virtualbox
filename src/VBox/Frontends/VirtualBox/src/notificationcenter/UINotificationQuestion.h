@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.h 113144 2026-02-24 12:38:24Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.h 113148 2026-02-24 15:57:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion declarations.
  */
@@ -81,6 +81,9 @@ public:
 
     /** Confirms removal for the snapshot with @a strName specified. */
     static bool confirmSnapshotRemoval(const QString &strName);
+
+    /** Confirms removal of the last DVD device. */
+    static bool confirmRemovingOfLastDVDDevice(QWidget *pParent);
 
 protected:
 

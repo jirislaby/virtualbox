@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113144 2026-02-24 12:38:24Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113148 2026-02-24 15:57:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -72,6 +72,22 @@ bool UINotificationQuestion::confirmSnapshotRemoval(const QString &strName)
                                                    "<b>%1</b>?</p>").arg(strName),
         QStringList() << QString() /* cancel button text */
                       << QApplication::translate("UIMessageCenter", "Delete") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmRemovingOfLastDVDDevice(QWidget *pParent)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Remove DVD device?"),
+        QApplication::translate("UIMessageCenter", "<p>Are you sure you want to delete the optical drive?</p><p>You will not "
+                                                   "be able to insert any optical disks or ISO images or install the Guest "
+                                                   "Additions without it!</p>"),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Remove", "medium") /* ok button text */,
+        false /* ok button by default? */,
+        QString() /* internal name */,
+        QString() /* help keyword*/,
+        pParent);
 }
 
 UINotificationQuestion::UINotificationQuestion(const QString &strName,

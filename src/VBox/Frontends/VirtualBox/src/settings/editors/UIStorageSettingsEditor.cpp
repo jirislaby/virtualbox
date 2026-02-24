@@ -1,4 +1,4 @@
-/* $Id: UIStorageSettingsEditor.cpp 112418 2026-01-12 18:48:01Z sergey.dubov@oracle.com $ */
+/* $Id: UIStorageSettingsEditor.cpp 113148 2026-02-24 15:57:56Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIStorageSettingsEditor class implementation.
  */
@@ -63,6 +63,7 @@
 #include "UIMediumSelector.h"
 #include "UIMediumTools.h"
 #include "UIMessageCenter.h"
+#include "UINotificationQuestion.h"
 #include "UIStorageSettingsEditor.h"
 
 /* COM includes: */
@@ -3521,7 +3522,7 @@ void UIStorageSettingsEditor::sltRemoveAttachment()
     const KDeviceType enmDeviceType = pModel->data(index, StorageModel::R_AttDevice).value<KDeviceType>();
     if (   enmDeviceType == KDeviceType_DVD
         && deviceCount(KDeviceType_DVD) == 1
-        && !msgCenter().confirmRemovingOfLastDVDDevice(this))
+        && !UINotificationQuestion::confirmRemovingOfLastDVDDevice(this))
         return;
 
     /* Remove attachment: */
