@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113135 2026-02-24 10:31:45Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113136 2026-02-24 10:49:48Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -392,6 +392,7 @@ void UINotificationQuestionItem::prepareConnections()
     UINotificationObjectItem::prepareConnections();
 
     /* Connect buttons: */
+    AssertPtrReturnVoid(m_pButtonBox);
     connect(m_pButtonBox, &QIDialogButtonBox::clicked, this, &UINotificationQuestionItem::sltHandleButtonClick);
 }
 
@@ -408,9 +409,11 @@ void UINotificationQuestionItem::showEvent(QShowEvent *pEvent)
         /* Make sure extended type question focused: */
         if (isExtended())
         {
-            /* Check whether Ok button should be default one: */
+            /* Ask question whether Ok button should be default one: */
             UINotificationQuestion *pQuestion = question();
             AssertPtrReturnVoid(pQuestion);
+            /* Focus Ok or Cancel button on polishing: */
+            AssertPtrReturnVoid(m_pButtonBox);
             QPushButton *pButton = m_pButtonBox->button(  pQuestion->isOkByDefault()
                                                         ? QDialogButtonBox::Ok
                                                         : QDialogButtonBox::Cancel);
@@ -427,10 +430,11 @@ void UINotificationQuestionItem::keyReleaseEvent(QKeyEvent *pEvent)
         case Qt::Key_Enter:
         case Qt::Key_Return:
         {
-            /* Check whether Ok button should be default one: */
+            /* Ask question whether Ok button should be default one: */
             UINotificationQuestion *pQuestion = question();
             AssertPtrReturnVoid(pQuestion);
-            /* Click Ok or Cancel button on Enter: */
+            /* Click Ok or Cancel button on Enter/Return: */
+            AssertPtrReturnVoid(m_pButtonBox);
             QPushButton *pButton = m_pButtonBox->button(  pQuestion->isOkByDefault()
                                                         ? QDialogButtonBox::Ok
                                                         : QDialogButtonBox::Cancel);
@@ -442,7 +446,10 @@ void UINotificationQuestionItem::keyReleaseEvent(QKeyEvent *pEvent)
         case Qt::Key_Escape:
         {
             /* Click Cancel button on Escape: */
-            m_pButtonBox->button(QDialogButtonBox::Cancel)->click();
+            AssertPtrReturnVoid(m_pButtonBox);
+            QPushButton *pButton = m_pButtonBox->button(QDialogButtonBox::Cancel);
+            AssertPtrReturnVoid(pButton);
+            pButton->click();
             pEvent->accept();
             break;
         }
@@ -463,6 +470,7 @@ void UINotificationQuestionItem::sltHandleButtonClick(QAbstractButton *pButton)
     AssertPtrReturnVoid(pQuestion);
 
     /* Acquire result: */
+    AssertPtrReturnVoid(m_pButtonBox);
     QMap<Question::Result, QAbstractButton*> results;
     results[Question::Result_Accept] = m_pButtonBox->button(QDialogButtonBox::Ok);
     results[Question::Result_AcceptAlternative] = m_pButtonBox->button(QDialogButtonBox::Yes);
