@@ -1,4 +1,4 @@
-/* $Id: IEMAllN8veExecMem.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: IEMAllN8veExecMem.cpp 113157 2026-02-25 12:37:24Z knut.osmundsen@oracle.com $ */
 /** @file
  * IEM - Native Recompiler, Executable Memory Allocator.
  */
@@ -1348,7 +1348,7 @@ iemExecMemAllocatorInitAndRegisterUnwindInfoForChunk(PVMCPUCC pVCpu, PIEMEXECMEM
      */
     static const IMAGE_UNWIND_CODE s_aOpcodes[] =
     {
-        { { 16, IMAGE_AMD64_UWOP_SET_FPREG,     0 } },              /* RSP  = RBP - FrameOffset * 10 (0x60) */
+        { { 16, IMAGE_AMD64_UWOP_SET_FPREG,     0 } },              /* RSP  = RBP - FrameOffset * 16 (64) */
         { { 16, IMAGE_AMD64_UWOP_ALLOC_SMALL,   0 } },              /* RSP += 8; */
         { { 14, IMAGE_AMD64_UWOP_PUSH_NONVOL,   X86_GREG_x15 } },   /* R15  = [RSP]; RSP += 8; */
         { { 12, IMAGE_AMD64_UWOP_PUSH_NONVOL,   X86_GREG_x14 } },   /* R14  = [RSP]; RSP += 8; */
