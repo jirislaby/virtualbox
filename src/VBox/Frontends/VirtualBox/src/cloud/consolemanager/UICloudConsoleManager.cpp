@@ -1,4 +1,4 @@
-/* $Id: UICloudConsoleManager.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UICloudConsoleManager.cpp 113180 2026-02-26 16:01:36Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UICloudConsoleManager class implementation.
  */
@@ -45,7 +45,7 @@
 #include "UIIconPool.h"
 #include "UICloudConsoleDetailsWidget.h"
 #include "UICloudConsoleManager.h"
-#include "UIMessageCenter.h"
+#include "UINotificationQuestion.h"
 #include "UIShortcutPool.h"
 #include "UITranslationEventListener.h"
 #include "QIToolBar.h"
@@ -589,7 +589,7 @@ void UICloudConsoleManagerWidget::sltRemoveCloudConsoleApplication()
     const QString strApplicationId = pItemApplication->id();
 
     /* Confirm cloud console application removal: */
-    if (!msgCenter().confirmCloudConsoleApplicationRemoval(pItemApplication->name(), this))
+    if (!UINotificationQuestion::confirmCloudConsoleApplicationRemoval(pItemApplication->name()))
         return;
 
     /* Enumerate all the application profiles: */
@@ -665,7 +665,7 @@ void UICloudConsoleManagerWidget::sltRemoveCloudConsoleProfile()
     AssertMsgReturnVoid(pItemProfile, ("Profile item must not be null!\n"));
 
     /* Confirm cloud console profile removal: */
-    if (!msgCenter().confirmCloudConsoleProfileRemoval(pItemProfile->name(), this))
+    if (!UINotificationQuestion::confirmCloudConsoleProfileRemoval(pItemProfile->name()))
         return;
 
     /* Delete profile from extra-data: */

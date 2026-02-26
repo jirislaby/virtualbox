@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.h 113179 2026-02-26 13:51:29Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.h 113180 2026-02-26 16:01:36Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion declarations.
  */
@@ -165,6 +165,14 @@ public:
         static bool confirmCloudProfileRemoval(const QString &strName, QWidget *pParent);
         /** Confirms cloud profiles import. */
         static bool confirmCloudProfilesImport(QWidget *pParent);
+    /** @} */
+
+    /** @name Cloud Console Manager warnings.
+      * @{ */
+        /** Confirms cloud console application removal. */
+        static bool confirmCloudConsoleApplicationRemoval(const QString &strName);
+        /** Confirms cloud console profile removal. */
+        static bool confirmCloudConsoleProfileRemoval(const QString &strName);
     /** @} */
 
 protected:

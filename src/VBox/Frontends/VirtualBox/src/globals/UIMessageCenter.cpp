@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 113179 2026-02-26 13:51:29Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 113180 2026-02-26 16:01:36Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -969,28 +969,6 @@ int UIMessageCenter::confirmUnattendedFilesRemoval(QWidget *pParent /*= 0 */) co
                              AlertButton_Cancel | AlertButtonOption_Default | AlertButtonOption_Escape,
                              0,
                              tr("Delete"));
-}
-
-bool UIMessageCenter::confirmCloudConsoleApplicationRemoval(const QString &strName, QWidget *pParent /* = 0 */) const
-{
-    return questionBinary(pParent, MessageType_Question,
-                          tr("<p>Do you want to remove the cloud console application <nobr><b>%1</b>?</nobr></p>")
-                             .arg(strName),
-                          0 /* auto-confirm id */,
-                          tr("Remove") /* ok button text */,
-                          QString() /* cancel button text */,
-                          false /* ok button by default? */);
-}
-
-bool UIMessageCenter::confirmCloudConsoleProfileRemoval(const QString &strName, QWidget *pParent /* = 0 */) const
-{
-    return questionBinary(pParent, MessageType_Question,
-                          tr("<p>Do you want to remove the cloud console profile <nobr><b>%1</b>?</nobr></p>")
-                             .arg(strName),
-                          0 /* auto-confirm id */,
-                          tr("Remove") /* ok button text */,
-                          QString() /* cancel button text */,
-                          false /* ok button by default? */);
 }
 
 #ifdef VBOX_GUI_WITH_NETWORK_MANAGER

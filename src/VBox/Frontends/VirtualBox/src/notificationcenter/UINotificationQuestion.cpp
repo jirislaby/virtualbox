@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113179 2026-02-26 13:51:29Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113180 2026-02-26 16:01:36Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -485,6 +485,30 @@ bool UINotificationQuestion::confirmCloudProfilesImport(QWidget *pParent)
         QString() /* internal name */,
         QString() /* help keyword */,
         pParent);
+}
+
+/* static */
+bool UINotificationQuestion::confirmCloudConsoleApplicationRemoval(const QString &strName)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Remove cloud console application?"),
+        QApplication::translate("UIMessageCenter", "<p>Do you want to remove the cloud console application "
+                                                   "<nobr><b>%1</b>?</nobr></p>").arg(strName),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Remove", "application") /* ok button text */,
+        false /* ok button by default? */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmCloudConsoleProfileRemoval(const QString &strName)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Remove cloud console application?"),
+        QApplication::translate("UIMessageCenter", "<p>Do you want to remove the cloud console profile "
+                                                   "<nobr><b>%1</b>?</nobr></p>").arg(strName),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Remove", "profile") /* ok button text */,
+        false /* ok button by default? */);
 }
 
 UINotificationQuestion::UINotificationQuestion(const QString &strName,
