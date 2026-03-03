@@ -1,4 +1,4 @@
-/* $Id: UINotificationCenter.cpp 113221 2026-03-03 12:37:01Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationCenter.cpp 113228 2026-03-03 14:46:16Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationCenter class implementation.
  */
@@ -240,16 +240,14 @@ QUuid UINotificationCenter::append(UINotificationObject *pObject)
     AssertPtrReturn(m_pModel, QUuid());
     AssertPtrReturn(pObject, QUuid());
 
-    /* Is object critical? */
-    const bool fCritical = pObject->isCritical();
     /* Is object progress? */
     const bool fProgress = pObject->inherits("UINotificationProgress");
 
     /* Handle object. Be aware it can be deleted during handling! */
     const QUuid uId = m_pModel->appendObject(pObject);
 
-    /* If object is critical and center isn't opened yet: */
-    if (!m_pButtonOpen->isChecked() && fCritical)
+    /* If center isn't opened yet: */
+    if (!m_pButtonOpen->isChecked())
     {
         /* We should delay progresses for a bit: */
         const int iDelay = fProgress ? 2000 : 0;
@@ -275,6 +273,7 @@ void UINotificationCenter::showBlocking(UINotificationMessage *pMessage)
 
     /* Switch to extended mode: */
     setExtendedMode(true);
+    pMessage->setCritical(true);
 
     /* Guard message for the case
      * it destroyed itself in his append call: */
@@ -318,6 +317,7 @@ int UINotificationCenter::showBlocking(UINotificationQuestion *pQuestion)
 
     /* Switch to extended mode: */
     setExtendedMode(true);
+    pQuestion->setCritical(true);
 
     /* Guard question for the case
      * it destroyed itself in his append call: */
@@ -1041,7 +1041,7 @@ void UINotificationCenter::setExtendedMode(bool fExtended)
 
     /* Hide all unrelated items for extended mode: */
     foreach (UINotificationObjectItem *pItem, m_items.values())
-        pItem->setVisible(!isExtendedMode() || pItem->isExtended());
+        pItem->setVisible(!isExtendedMode() || pItem->isCritical());
 }
 
 void UINotificationCenter::setAnimatedValue(int iValue)
@@ -1154,7 +1154,8 @@ void UINotificationCenter::adjustMask()
 void UINotificationCenter::createItem(const QUuid &uId)
 {
     /* Create item itself: */
-    UINotificationObjectItem *pItem = UINotificationItem::create(this, m_pModel->objectById(uId), isExtendedMode());
+    UINotificationObjectItem *pItem = UINotificationItem::create(this, m_pModel->objectById(uId));
+    pItem->setVisible(!isExtendedMode() || pItem->isCritical());
     m_items[uId] = pItem;
     m_pLayoutItems->insertWidget(m_enmOrder == Qt::AscendingOrder ? -1 : 0, pItem);
 }

@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.h 113138 2026-02-24 11:01:12Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.h 113228 2026-03-03 14:46:16Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class declaration.
  */
@@ -62,16 +62,14 @@ class UINotificationObjectItem : public QWidget
 public:
 
     /** Constructs notification-object item, passing @a pParent to the base-class.
-      * @param  pObject    Brings the notification-object this item created for.
-      * @param  fExtended  Brings whether notification is of extended type. */
+      * @param  pObject  Brings the notification-object this item created for. */
     UINotificationObjectItem(QWidget *pParent,
-                             UINotificationObject *pObject,
-                             bool fExtended = false);
+                             UINotificationObject *pObject);
 
     /** Returns notification-object this item created for. */
-    UINotificationObject *internalObject() { return m_pObject; }
-    /** Returns whether notification is of extended type. */
-    bool isExtended() const { return m_fExtended; }
+    UINotificationObject *internalObject() const { return m_pObject; }
+    /** Returns whether notification is of critical type. */
+    bool isCritical() const;
 
     /** Prepares everything. */
     void prepare();
@@ -96,8 +94,6 @@ protected:
 
     /** Holds the notification-object this item created for. */
     UINotificationObject *m_pObject;
-    /** Holds whether item is of extended type. */
-    bool                  m_fExtended;
 
     /** Holds the minimum width hint. */
     int  m_iMinimumWidthHint;
@@ -141,11 +137,9 @@ class UINotificationQuestionItem : public UINotificationObjectItem
 public:
 
     /** Constructs notification-question item, passing @a pParent to the base-class.
-      * @param  pObject    Brings the notification-object this item created for.
-      * @param  fExtended  Brings whether notification is of extended type. */
+      * @param  pObject  Brings the notification-object this item created for. */
     UINotificationQuestionItem(QWidget *pParent,
-                               UINotificationObject *pObject,
-                               bool fExtended);
+                               UINotificationObject *pObject);
 
 protected:
 
@@ -265,11 +259,9 @@ namespace UINotificationItem
 {
     /** Creates notification-object of required type.
       * @param  pParent    Brings the parent constructed item being attached to.
-      * @param  pObject    Brings the notification-object item being constructed for.
-      * @param  fExtended  Brings whether notification is of extended type. */
+      * @param  pObject    Brings the notification-object item being constructed for. */
     UINotificationObjectItem *create(QWidget *pParent,
-                                     UINotificationObject *pObject,
-                                     bool fExtended);
+                                     UINotificationObject *pObject);
 }
 
 #endif /* !FEQT_INCLUDED_SRC_notificationcenter_UINotificationObjectItem_h */

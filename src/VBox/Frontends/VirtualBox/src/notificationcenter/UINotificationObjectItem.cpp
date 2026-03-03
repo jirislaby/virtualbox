@@ -1,4 +1,4 @@
-/* $Id: UINotificationObjectItem.cpp 113138 2026-02-24 11:01:12Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObjectItem.cpp 113228 2026-03-03 14:46:16Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObjectItem class implementation.
  */
@@ -53,11 +53,9 @@
 *********************************************************************************************************************************/
 
 UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
-                                                   UINotificationObject *pObject,
-                                                   bool fExtended /* = false */)
+                                                   UINotificationObject *pObject)
     : QWidget(pParent)
     , m_pObject(pObject)
-    , m_fExtended(fExtended)
     , m_iMinimumWidthHint(0)
     , m_iDetailsWidthHint(0)
     , m_pLayoutMain(0)
@@ -68,8 +66,13 @@ UINotificationObjectItem::UINotificationObjectItem(QWidget *pParent,
     , m_pLabelDetails(0)
     , m_pButtonForget(0)
     , m_fHovered(false)
-    , m_fToggled(m_fExtended)
+    , m_fToggled(isCritical())
 {
+}
+
+bool UINotificationObjectItem::isCritical() const
+{
+    return internalObject()->isCritical();
 }
 
 void UINotificationObjectItem::prepare()
@@ -330,9 +333,8 @@ void UINotificationObjectItem::sltHandleHelpRequest()
 *********************************************************************************************************************************/
 
 UINotificationQuestionItem::UINotificationQuestionItem(QWidget *pParent,
-                                                       UINotificationObject *pObject,
-                                                       bool fExtended)
-    : UINotificationObjectItem(pParent, pObject, fExtended)
+                                                       UINotificationObject *pObject)
+    : UINotificationObjectItem(pParent, pObject)
     , m_pButtonBox(0)
     , m_fPolished(false)
 {
@@ -406,8 +408,8 @@ void UINotificationQuestionItem::showEvent(QShowEvent *pEvent)
     {
         m_fPolished = true;
 
-        /* Make sure extended type question focused: */
-        if (isExtended())
+        /* Make sure critical type question focused: */
+        if (isCritical())
         {
             /* Ask question whether Ok button should be default one: */
             UINotificationQuestion *pQuestion = question();
@@ -725,15 +727,14 @@ void UINotificationDownloaderItem::updateDetails()
 *********************************************************************************************************************************/
 
 UINotificationObjectItem *UINotificationItem::create(QWidget *pParent,
-                                                     UINotificationObject *pObject,
-                                                     bool fExtended)
+                                                     UINotificationObject *pObject)
 {
     /* Prepare item: */
     UINotificationObjectItem *pItem = 0;
 
     /* Handle known types: */
     if (pObject->inherits("UINotificationQuestion"))
-        pItem = new UINotificationQuestionItem(pParent, pObject, fExtended);
+        pItem = new UINotificationQuestionItem(pParent, pObject);
     else if (pObject->inherits("UINotificationProgress"))
         pItem = new UINotificationProgressItem(pParent, pObject);
 #ifdef VBOX_GUI_WITH_NETWORK_MANAGER
@@ -742,7 +743,7 @@ UINotificationObjectItem *UINotificationItem::create(QWidget *pParent,
 #endif
     /* Handle defaults: */
     else
-        pItem = new UINotificationObjectItem(pParent, pObject, fExtended);
+        pItem = new UINotificationObjectItem(pParent, pObject);
 
     /* Prepare item: */
     if (pItem)

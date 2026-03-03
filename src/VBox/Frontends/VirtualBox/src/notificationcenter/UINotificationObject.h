@@ -1,4 +1,4 @@
-/* $Id: UINotificationObject.h 113133 2026-02-24 09:00:05Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObject.h 113228 2026-03-03 14:46:16Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObject class declaration.
  */
@@ -91,19 +91,22 @@ class SHARED_LIBRARY_STUFF UINotificationSimple : public UINotificationObject
 {
     Q_OBJECT;
 
+public:
+
+    /** Defines whether object is @a fCritical. */
+    void setCritical(bool fCritical) { m_fCritical = fCritical; }
+
 protected:
 
     /** Constructs notification-simple.
       * @param  strName          Brings the message name.
       * @param  strDetails       Brings the message details.
       * @param  strInternalName  Brings the message internal name.
-      * @param  strHelpKeyword   Brings the message help keyword.
-      * @param  fCritical        Brings whether message is critical. */
+      * @param  strHelpKeyword   Brings the message help keyword. */
     UINotificationSimple(const QString &strName,
                          const QString &strDetails,
                          const QString &strInternalName,
-                         const QString &strHelpKeyword,
-                         bool fCritical = true);
+                         const QString &strHelpKeyword);
 
     /** Returns object name. */
     virtual QString name() const RT_OVERRIDE RT_FINAL { return m_strName; }

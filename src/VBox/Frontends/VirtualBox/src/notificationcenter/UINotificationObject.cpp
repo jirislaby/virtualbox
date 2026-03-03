@@ -1,4 +1,4 @@
-/* $Id: UINotificationObject.cpp 113071 2026-02-18 15:51:58Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationObject.cpp 113228 2026-03-03 14:46:16Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UINotificationObject class implementation.
  */
@@ -61,13 +61,12 @@ void UINotificationObject::close()
 UINotificationSimple::UINotificationSimple(const QString &strName,
                                            const QString &strDetails,
                                            const QString &strInternalName,
-                                           const QString &strHelpKeyword,
-                                           bool fCritical /* = true */)
+                                           const QString &strHelpKeyword)
     : m_strName(strName)
     , m_strDetails(strDetails)
     , m_strInternalName(strInternalName)
     , m_strHelpKeyword(strHelpKeyword)
-    , m_fCritical(fCritical)
+    , m_fCritical(false)
 {
 }
 
