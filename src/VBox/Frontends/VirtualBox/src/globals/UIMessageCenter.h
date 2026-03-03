@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.h 113213 2026-03-03 07:36:58Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.h 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class declaration.
  */
@@ -305,21 +305,6 @@ public:
       * @{ */
         bool confirmVisoDiscard(QWidget *pParent = 0) const;
         int  confirmUnattendedFilesRemoval(QWidget *pParent = 0) const;
-    /** @} */
-
-    /** @name VirtualBox Manager / Downloading warnings.
-      * @{ */
-#ifdef VBOX_GUI_WITH_NETWORK_MANAGER
-        bool confirmLookingForGuestAdditions() const;
-        bool confirmDownloadGuestAdditions(const QString &strUrl, qulonglong uSize) const;
-        bool proposeMountGuestAdditions(const QString &strUrl, const QString &strSrc) const;
-
-        bool confirmLookingForExtensionPack(const QString &strExtPackName, const QString &strExtPackVersion) const;
-        bool confirmDownloadExtensionPack(const QString &strExtPackName, const QString &strURL, qulonglong uSize) const;
-        bool proposeInstallExtentionPack(const QString &strExtPackName, const QString &strFrom, const QString &strTo) const;
-        bool proposeDeleteExtentionPack(const QString &strTo) const;
-        bool proposeDeleteOldExtentionPacks(const QStringList &strFiles) const;
-#endif /* VBOX_GUI_WITH_NETWORK_MANAGER */
     /** @} */
 
     /** @name Runtime UI warnings.

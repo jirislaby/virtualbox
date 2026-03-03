@@ -1,4 +1,4 @@
-/* $Id: UIDownloaderGuestAdditions.cpp 113062 2026-02-17 12:37:07Z sergey.dubov@oracle.com $ */
+/* $Id: UIDownloaderGuestAdditions.cpp 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDownloaderGuestAdditions class implementation.
  */
@@ -40,6 +40,7 @@
 #include "UIModalWindowManager.h"
 #include "UINetworkReply.h"
 #include "UINotificationMessage.h"
+#include "UINotificationQuestion.h"
 #include "UIVersion.h"
 
 /* Other VBox includes: */
@@ -71,7 +72,8 @@ QString UIDownloaderGuestAdditions::description() const
 
 bool UIDownloaderGuestAdditions::askForDownloadingConfirmation(UINetworkReply *pReply)
 {
-    return msgCenter().confirmDownloadGuestAdditions(source().toString(), pReply->header(UINetworkReply::ContentLengthHeader).toInt());
+    return UINotificationQuestion::confirmDownloadingGuestAdditions(source().toString(),
+                                                                    pReply->header(UINetworkReply::ContentLengthHeader).toInt());
 }
 
 void UIDownloaderGuestAdditions::handleDownloadedObject(UINetworkReply *pReply)
@@ -173,7 +175,7 @@ void UIDownloaderGuestAdditions::handleVerifiedObject(UINetworkReply *pReply)
         if (fFileRenamed)
         {
             /* Warn the user about additions-image downloaded and saved, propose to mount it (and/or exit in any case): */
-            if (msgCenter().proposeMountGuestAdditions(source().toString(), QDir::toNativeSeparators(target())))
+            if (UINotificationQuestion::confirmMountingGuestAdditions(source().toString(), QDir::toNativeSeparators(target())))
                 emit sigDownloadFinished(target());
             break;
         }

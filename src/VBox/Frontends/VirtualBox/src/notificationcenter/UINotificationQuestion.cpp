@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.cpp 113210 2026-03-02 13:31:46Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.cpp 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion implementations.
  */
@@ -697,6 +697,101 @@ bool UINotificationQuestion::confirmCloudConsoleProfileRemoval(const QString &st
                       << QApplication::translate("UIMessageCenter", "Remove", "profile") /* ok button text */,
         false /* ok button by default? */);
 }
+
+#ifdef VBOX_GUI_WITH_NETWORK_MANAGER
+/* static */
+bool UINotificationQuestion::confirmLookingForGuestAdditions()
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Look for guest additions?"),
+        QApplication::translate("UIMessageCenter", "<p>Could not find the <b>VirtualBox Guest Additions</b> disk image file.</p>"
+                                                   "<p>Do you wish to download this disk image file from the Internet?</p>"));
+}
+
+/* static */
+bool UINotificationQuestion::confirmDownloadingGuestAdditions(const QString &strUrl, qulonglong uSize)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Download guest additions?"),
+        QApplication::translate("UIMessageCenter", "<p>Are you sure you want to download the <b>VirtualBox Guest Additions</b> "
+                                                   "disk image file from <nobr><a href=\"%1\">%1</a></nobr> (size %2 "
+                                                   "bytes)?</p>")
+                                                   .arg(strUrl, QLocale(UITranslator::languageId()).toString(uSize)),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Download", "guest additions") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmMountingGuestAdditions(const QString &strUrl, const QString &strSrc)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Mount guest additions?"),
+        QApplication::translate("UIMessageCenter", "<p>The <b>VirtualBox Guest Additions</b> disk image file has been "
+                                                   "successfully downloaded from <nobr><a href=\"%1\">%1</a></nobr> and saved "
+                                                   "locally as <nobr><b>%2</b>.</nobr></p><p>Do you wish to continue with Guest "
+                                                   "Additions installation?</p>").arg(strUrl, strSrc),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Mount", "guest additions") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmLookingForExtensionPack(const QString &strExtPackName, const QString &strExtPackVersion)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Look for extension pack?"),
+        QApplication::translate("UIMessageCenter", "<p>You have an old version (%1) of the <b><nobr>%2</nobr></b> installed.</p>"
+                                                   "<p>Do you wish to download latest one from the Internet?</p>")
+                                                   .arg(strExtPackVersion).arg(strExtPackName));
+}
+
+/* static */
+bool UINotificationQuestion::confirmDownloadingExtensionPack(const QString &strExtPackName, const QString &strURL, qulonglong uSize)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Download extension pack?"),
+        QApplication::translate("UIMessageCenter", "<p>Are you sure you want to download the <b><nobr>%1</nobr></b> from "
+                                                   "<nobr><a href=\"%2\">%2</a></nobr> (size %3 bytes)?</p>")
+                                                   .arg(strExtPackName, strURL,
+                                                        QLocale(UITranslator::languageId()).toString(uSize)),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Download", "extension pack") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmInstallingExtentionPack(const QString &strExtPackName, const QString &strFrom, const QString &strTo)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Install extension pack?"),
+        QApplication::translate("UIMessageCenter", "<p>The <b><nobr>%1</nobr></b> has been successfully downloaded from "
+                                                   "<nobr><a href=\"%2\">%2</a></nobr> and saved locally as "
+                                                   "<nobr><b>%3</b>.</nobr></p><p>Do you wish to install this extension "
+                                                   "pack?</p>").arg(strExtPackName, strFrom, strTo),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Install", "extension pack") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmDeletingExtentionPackFile(const QString &strTo)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Delete extension pack file?"),
+        QApplication::translate("UIMessageCenter", "Do you want to delete the downloaded file "
+                                                   "<nobr><b>%1</b></nobr>?").arg(strTo),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Delete", "extension pack") /* ok button text */);
+}
+
+/* static */
+bool UINotificationQuestion::confirmDeletingOldExtentionPackFiles(const QStringList &strFiles)
+{
+    return createBlockingQuestion(
+        QApplication::translate("UIMessageCenter", "Delete extension pack files?"),
+        QApplication::translate("UIMessageCenter", "Do you want to delete following list of files "
+                                                   "<nobr><b>%1</b></nobr>?").arg(strFiles.join(",")),
+        QStringList() << QString() /* cancel button text */
+                      << QApplication::translate("UIMessageCenter", "Delete", "extension pack") /* ok button text */);
+}
+#endif /* VBOX_GUI_WITH_NETWORK_MANAGER */
 
 /* static */
 bool UINotificationQuestion::warnAboutNetworkInterfaceNotFound(const QString &strMachineName, const QString &strIfNames)

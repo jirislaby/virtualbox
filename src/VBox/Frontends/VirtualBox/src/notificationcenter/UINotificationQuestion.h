@@ -1,4 +1,4 @@
-/* $Id: UINotificationQuestion.h 113210 2026-03-02 13:31:46Z sergey.dubov@oracle.com $ */
+/* $Id: UINotificationQuestion.h 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - Various UINotificationQuestion declarations.
  */
@@ -197,6 +197,29 @@ public:
         /** Confirms cloud console profile removal. */
         static bool confirmCloudConsoleProfileRemoval(const QString &strName);
     /** @} */
+
+#ifdef VBOX_GUI_WITH_NETWORK_MANAGER
+    /** @name Downloader warnings.
+      * @{ */
+        /** Confirms looking for guest additions. */
+        static bool confirmLookingForGuestAdditions();
+        /** Confirms downloading guest additions. */
+        static bool confirmDownloadingGuestAdditions(const QString &strUrl, qulonglong uSize);
+        /** Confirms mounting guest additions. */
+        static bool confirmMountingGuestAdditions(const QString &strUrl, const QString &strSrc);
+
+        /** Confirms looking for extension pack. */
+        static bool confirmLookingForExtensionPack(const QString &strExtPackName, const QString &strExtPackVersion);
+        /** Confirms downloading extension pack. */
+        static bool confirmDownloadingExtensionPack(const QString &strExtPackName, const QString &strURL, qulonglong uSize);
+        /** Confirms installing extension pack. */
+        static bool confirmInstallingExtentionPack(const QString &strExtPackName, const QString &strFrom, const QString &strTo);
+        /** Confirms deleting extension pack file. */
+        static bool confirmDeletingExtentionPackFile(const QString &strTo);
+        /** Confirms deleting old extension pack files. */
+        static bool confirmDeletingOldExtentionPackFiles(const QStringList &strFiles);
+    /** @} */
+#endif /* VBOX_GUI_WITH_NETWORK_MANAGER */
 
     /** @name Runtime UI warnings.
       * @{ */

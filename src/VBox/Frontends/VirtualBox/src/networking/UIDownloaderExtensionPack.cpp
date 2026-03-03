@@ -1,4 +1,4 @@
-/* $Id: UIDownloaderExtensionPack.cpp 113062 2026-02-17 12:37:07Z sergey.dubov@oracle.com $ */
+/* $Id: UIDownloaderExtensionPack.cpp 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDownloaderExtensionPack class implementation.
  */
@@ -36,10 +36,10 @@
 #include "UIDefs.h"
 #include "UIDownloaderExtensionPack.h"
 #include "UIGlobalSession.h"
-#include "UIMessageCenter.h"
 #include "UIModalWindowManager.h"
 #include "UINetworkReply.h"
 #include "UINotificationMessage.h"
+#include "UINotificationQuestion.h"
 #include "UIVersion.h"
 
 /* Other VBox includes: */
@@ -72,7 +72,7 @@ QString UIDownloaderExtensionPack::description() const
 
 bool UIDownloaderExtensionPack::askForDownloadingConfirmation(UINetworkReply *pReply)
 {
-    return msgCenter().confirmDownloadExtensionPack(GUI_ExtPackName, source().toString(), pReply->header(UINetworkReply::ContentLengthHeader).toInt());
+    return UINotificationQuestion::confirmDownloadingExtensionPack(GUI_ExtPackName, source().toString(), pReply->header(UINetworkReply::ContentLengthHeader).toInt());
 }
 
 void UIDownloaderExtensionPack::handleDownloadedObject(UINetworkReply *pReply)

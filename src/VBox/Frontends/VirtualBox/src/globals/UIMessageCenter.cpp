@@ -1,4 +1,4 @@
-/* $Id: UIMessageCenter.cpp 113213 2026-03-03 07:36:58Z sergey.dubov@oracle.com $ */
+/* $Id: UIMessageCenter.cpp 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMessageCenter class implementation.
  */
@@ -824,89 +824,6 @@ int UIMessageCenter::confirmUnattendedFilesRemoval(QWidget *pParent /*= 0 */) co
                              0,
                              tr("Delete"));
 }
-
-#ifdef VBOX_GUI_WITH_NETWORK_MANAGER
-bool UIMessageCenter::confirmLookingForGuestAdditions() const
-{
-    return questionBinary(0, MessageType_Question,
-                          tr("<p>Could not find the <b>VirtualBox Guest Additions</b> disk image file.</p>"
-                             "<p>Do you wish to download this disk image file from the Internet?</p>"),
-                          0 /* auto-confirm id */,
-                          tr("Download"));
-}
-
-bool UIMessageCenter::confirmDownloadGuestAdditions(const QString &strUrl, qulonglong uSize) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("<p>Are you sure you want to download the <b>VirtualBox Guest Additions</b> disk image file "
-                             "from <nobr><a href=\"%1\">%1</a></nobr> (size %2 bytes)?</p>")
-                             .arg(strUrl, QLocale(UITranslator::languageId()).toString(uSize)),
-                          0 /* auto-confirm id */,
-                          tr("Download"));
-}
-
-bool UIMessageCenter::proposeMountGuestAdditions(const QString &strUrl, const QString &strSrc) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("<p>The <b>VirtualBox Guest Additions</b> disk image file has been successfully downloaded "
-                             "from <nobr><a href=\"%1\">%1</a></nobr> "
-                             "and saved locally as <nobr><b>%2</b>.</nobr></p>"
-                             "<p>Do you wish to continue with Guest Additions installation?</p>")
-                             .arg(strUrl, strSrc),
-                          0 /* auto-confirm id */,
-                          tr("Continue", "agree with additions installation"));
-}
-
-bool UIMessageCenter::confirmLookingForExtensionPack(const QString &strExtPackName, const QString &strExtPackVersion) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("<p>You have an old version (%1) of the <b><nobr>%2</nobr></b> installed.</p>"
-                             "<p>Do you wish to download latest one from the Internet?</p>")
-                             .arg(strExtPackVersion).arg(strExtPackName),
-                          0 /* auto-confirm id */,
-                          tr("Download"));
-}
-
-bool UIMessageCenter::confirmDownloadExtensionPack(const QString &strExtPackName, const QString &strURL, qulonglong uSize) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("<p>Are you sure you want to download the <b><nobr>%1</nobr></b> "
-                             "from <nobr><a href=\"%2\">%2</a></nobr> (size %3 bytes)?</p>")
-                             .arg(strExtPackName, strURL, QLocale(UITranslator::languageId()).toString(uSize)),
-                          0 /* auto-confirm id */,
-                          tr("Download"));
-}
-
-bool UIMessageCenter::proposeInstallExtentionPack(const QString &strExtPackName, const QString &strFrom, const QString &strTo) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("<p>The <b><nobr>%1</nobr></b> has been successfully downloaded "
-                             "from <nobr><a href=\"%2\">%2</a></nobr> "
-                             "and saved locally as <nobr><b>%3</b>.</nobr></p>"
-                             "<p>Do you wish to install this extension pack?</p>")
-                             .arg(strExtPackName, strFrom, strTo),
-                          0 /* auto-confirm id */,
-                          tr("Install", "extension pack"));
-}
-
-bool UIMessageCenter::proposeDeleteExtentionPack(const QString &strTo) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("Do you want to delete the downloaded file <nobr><b>%1</b></nobr>?")
-                             .arg(strTo),
-                          0 /* auto-confirm id */,
-                          tr("Delete", "extension pack"));
-}
-
-bool UIMessageCenter::proposeDeleteOldExtentionPacks(const QStringList &strFiles) const
-{
-    return questionBinary(windowManager().mainWindowShown(), MessageType_Question,
-                          tr("Do you want to delete following list of files <nobr><b>%1</b></nobr>?")
-                             .arg(strFiles.join(",")),
-                          0 /* auto-confirm id */,
-                          tr("Delete", "extension pack"));
-}
-#endif /* VBOX_GUI_WITH_NETWORK_MANAGER */
 
 bool UIMessageCenter::warnAboutGuruMeditation(const QString &strLogFolder)
 {
