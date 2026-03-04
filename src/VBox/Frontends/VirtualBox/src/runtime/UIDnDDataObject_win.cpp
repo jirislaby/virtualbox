@@ -1,4 +1,4 @@
-/* $Id: UIDnDDataObject_win.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDnDDataObject_win.cpp 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDnDDrag class implementation (implements IDataObject).
  */
@@ -805,4 +805,3 @@ int UIDnDDataObject::Signal(const QString &strFormat,
 
     return rc;
 }
-

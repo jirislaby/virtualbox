@@ -1,4 +1,4 @@
-/* $Id: UIMultiScreenLayout.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIMultiScreenLayout.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMultiScreenLayout class declaration.
  */
@@ -123,4 +123,3 @@ private:
 };
 
 #endif /* !FEQT_INCLUDED_SRC_runtime_UIMultiScreenLayout_h */
-

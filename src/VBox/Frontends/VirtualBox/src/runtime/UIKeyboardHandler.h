@@ -1,4 +1,4 @@
-/* $Id: UIKeyboardHandler.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIKeyboardHandler.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIKeyboardHandler class declaration.
  */
@@ -60,7 +60,6 @@ class WinAltGrMonitor;
 #ifdef VBOX_WS_NIX
 #  include <xcb/xcb.h>
 #endif
-
 
 /* Delegate to control VM keyboard functionality: */
 class UIKeyboardHandler : public QObject

@@ -1,4 +1,4 @@
-/* $Id: UIMachineWindowSeamless.cpp 112954 2026-02-11 14:42:55Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineWindowSeamless.cpp 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineWindowSeamless class implementation.
  */
@@ -201,7 +201,6 @@ void UIMachineWindowSeamless::placeOnScreen()
     Q_UNUSED(workingArea);
 
 #ifdef VBOX_WS_NIX
-
     /* Make sure we are located on corresponding host-screen: */
     if (   UIDesktopWidgetWatchdog::screenCount() > 1
         && (x() != workingArea.x() || y() != workingArea.y()))
@@ -238,7 +237,6 @@ void UIMachineWindowSeamless::placeOnScreen()
     LogRel(("GUI: UIMachineWindowSeamless::placeOnScreen: Move window: %d to: %dx%d\n",
             m_uScreenId, newPosition.x(), newPosition.y()));
     move(newPosition);
-
 #endif
 }
 

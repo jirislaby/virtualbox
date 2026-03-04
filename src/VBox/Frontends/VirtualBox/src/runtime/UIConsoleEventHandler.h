@@ -1,4 +1,4 @@
-/* $Id: UIConsoleEventHandler.h 112641 2026-01-19 13:59:27Z sergey.dubov@oracle.com $ */
+/* $Id: UIConsoleEventHandler.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIConsoleEventHandler class declaration.
  */
@@ -49,7 +49,6 @@
 class UIConsoleEventHandlerProxy;
 class UIMousePointerShapeData;
 class UISession;
-
 
 /** QObject subclass
   * providing GUI with the CConsole event-source. */

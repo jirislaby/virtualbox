@@ -1,4 +1,4 @@
-/* $Id: UIDnDEnumFormat_win.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDnDEnumFormat_win.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDnDEnumFormat class declaration.
  */
@@ -30,7 +30,6 @@
 #ifndef RT_WITHOUT_PRAGMA_ONCE
 # pragma once
 #endif
-
 
 class UIDnDEnumFormatEtc : public IEnumFORMATETC
 {
@@ -64,4 +63,3 @@ private:
 };
 
 #endif /* !FEQT_INCLUDED_SRC_runtime_UIDnDEnumFormat_win_h */
-

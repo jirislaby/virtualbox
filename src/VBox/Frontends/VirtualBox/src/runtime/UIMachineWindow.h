@@ -1,4 +1,4 @@
-/* $Id: UIMachineWindow.h 112785 2026-02-02 16:38:44Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineWindow.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineWindow class declaration.
  */
@@ -52,7 +52,6 @@ class UIMachine;
 class UIMachineLogic;
 class UIMachineView;
 class CSession;
-
 
 /* Machine-window interface: */
 class UIMachineWindow : public QMainWindow
@@ -217,7 +216,6 @@ private slots:
 
     /* Translate stuff: */
     void sltRetranslateUI();
-
 };
 
 #endif /* !FEQT_INCLUDED_SRC_runtime_UIMachineWindow_h */

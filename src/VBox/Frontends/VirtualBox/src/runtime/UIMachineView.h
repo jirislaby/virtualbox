@@ -1,4 +1,4 @@
-/* $Id: UIMachineView.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIMachineView.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineView class declaration.
  */
@@ -68,7 +68,6 @@ class CSession;
 #ifdef VBOX_WITH_DRAG_AND_DROP
 class CDnDTarget;
 #endif
-
 
 class UIMachineView : public QAbstractScrollArea
 {

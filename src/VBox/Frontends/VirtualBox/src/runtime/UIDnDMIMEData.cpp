@@ -1,4 +1,4 @@
-/* $Id: UIDnDMIMEData.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIDnDMIMEData.cpp 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIDnDMIMEData class implementation.
  */
@@ -303,4 +303,3 @@ void UIDnDMIMEData::sltDropActionChanged(Qt::DropAction dropAction)
     LogFlowFunc(("dropAction=0x%x\n", dropAction));
     m_curAction = dropAction;
 }
-

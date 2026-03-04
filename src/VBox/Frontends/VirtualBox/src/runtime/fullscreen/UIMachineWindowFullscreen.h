@@ -1,4 +1,4 @@
-/* $Id: UIMachineWindowFullscreen.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: UIMachineWindowFullscreen.h 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineWindowFullscreen class declaration.
  */
@@ -46,6 +46,7 @@ class UIMachineWindowFullscreen : public UIMachineWindow
 
 #ifdef RT_OS_DARWIN
 signals:
+
     /** Mac OS X: Notifies listener about native 'fullscreen' will be entered. */
     void sigNotifyAboutNativeFullscreenWillEnter();
     /** Mac OS X: Notifies listener about native 'fullscreen' entered. */

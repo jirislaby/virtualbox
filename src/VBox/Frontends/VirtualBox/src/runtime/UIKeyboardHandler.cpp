@@ -1,4 +1,4 @@
-/* $Id: UIKeyboardHandler.cpp 113227 2026-03-03 14:01:28Z sergey.dubov@oracle.com $ */
+/* $Id: UIKeyboardHandler.cpp 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIKeyboardHandler class implementation.
  */
@@ -751,7 +751,6 @@ void UIKeyboardHandler::setDebuggerActive(bool aActive /* = true*/)
     else
         m_fDebuggerActive = false;
 }
-
 #endif /* VBOX_WITH_DEBUGGER_GUI */
 
 #ifdef VBOX_WS_WIN

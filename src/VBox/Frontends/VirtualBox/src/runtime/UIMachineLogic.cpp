@@ -1,4 +1,4 @@
-/* $Id: UIMachineLogic.cpp 113222 2026-03-03 12:39:40Z sergey.dubov@oracle.com $ */
+/* $Id: UIMachineLogic.cpp 113252 2026-03-04 14:45:19Z sergey.dubov@oracle.com $ */
 /** @file
  * VBox Qt GUI - UIMachineLogic class implementation.
  */
@@ -133,6 +133,7 @@
 
 #define VBOX_WITH_REWORKED_SESSION_INFORMATION /**< Define for reworked session-information window.  @todo r-bird: What's this for? */
 
+
 struct USBTarget
 {
     USBTarget() : attach(false), id(QUuid()) {}
@@ -142,6 +143,7 @@ struct USBTarget
     QUuid id;
 };
 Q_DECLARE_METATYPE(USBTarget);
+
 
 /** Describes enumerated webcam item. */
 struct WebCamTarget
@@ -2322,7 +2324,6 @@ void UIMachineLogic::sltInstallGuestAdditions()
 }
 
 #ifdef VBOX_WITH_DEBUGGER_GUI
-
 void UIMachineLogic::sltShowDebugStatistics()
 {
     if (uimachine()->dbgCreated(actionPool()->action(UIActionIndexRT_M_Debug)))
