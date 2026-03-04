@@ -1,4 +1,4 @@
-/* $Id: Display.h 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: Display.h 113251 2026-03-04 14:03:34Z alexander.eichner@oracle.com $ */
 /** @file
  * VBox frontends: Basic Frontend (BFE):
  * Declaration of Display class
@@ -85,6 +85,8 @@ private:
     static DECLCALLBACK(void)  i_displayLFBModeChangeCallback(PPDMIDISPLAYCONNECTOR pInterface, bool fEnabled);
     static DECLCALLBACK(void)  i_displayProcessAdapterDataCallback(PPDMIDISPLAYCONNECTOR pInterface, void *pvVRAM, uint32_t u32VRAMSize);
     static DECLCALLBACK(void)  i_displayProcessDisplayDataCallback(PPDMIDISPLAYCONNECTOR pInterface, void *pvVRAM, unsigned uScreenId);
+    static DECLCALLBACK(int)   i_displayVBVAEnable(PPDMIDISPLAYCONNECTOR pInterface, unsigned uScreenId,
+                                                   VBVAHOSTFLAGS RT_UNTRUSTED_VOLATILE_GUEST *pHostFlags);
 
     static DECLCALLBACK(void) i_doInvalidateAndUpdate(struct DRVMAINDISPLAY  *mpDrv);
     /** Pointer to the associated display driver. */

@@ -1,4 +1,4 @@
-/* $Id: PDMR3Driver.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: PDMR3Driver.cpp 113251 2026-03-04 14:03:34Z alexander.eichner@oracle.com $ */
 /** @file
  * PDM - Pluggable Device and Driver Manager, Driver parts.
  */
@@ -161,6 +161,30 @@ int pdmR3DrvInit(PVM pVM)
         if (RT_FAILURE(rc))
             return rc;
     }
+
+    /*
+     * For statically linked environments check whether there is a UUID set to query the
+     * registration callback with.
+     */
+    RTUUID Uuid;
+    rc = CFGMR3QueryBytes(pDriversNode, "StaticUuid", &Uuid, sizeof(Uuid));
+    if (RT_SUCCESS(rc))
+    {
+        PUVM pUVM = pVM->pUVM;
+        FNPDMVBOXDRIVERSREGISTER *pfnCallback = NULL;
+
+        if (pUVM->pVmm2UserMethods->pfnQueryGenericObject)
+            pfnCallback = (FNPDMVBOXDRIVERSREGISTER *)pUVM->pVmm2UserMethods->pfnQueryGenericObject(pUVM->pVmm2UserMethods, pUVM, &Uuid);
+
+        if (pfnCallback)
+        {
+            rc = pfnCallback(&RegCB.Core, VBOX_VERSION);
+            if (RT_FAILURE(rc))
+                AssertMsgFailed(("VBoxDriversRegister failed with rc=%Rrc\n", rc));
+        }
+    }
+    else if (rc != VERR_CFGM_VALUE_NOT_FOUND) /* Log any error but continue. */
+        LogRel(("Configuration error: Querying boolean \"StaticUuid\" failed with %Rrc\n", rc));
 
     /*
      * Load additional driver modules.

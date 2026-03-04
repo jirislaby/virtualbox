@@ -1,4 +1,4 @@
-/* $Id: Keyboard.cpp 112403 2026-01-11 19:29:08Z knut.osmundsen@oracle.com $ */
+/* $Id: Keyboard.cpp 113251 2026-03-04 14:03:34Z alexander.eichner@oracle.com $ */
 /** @file
  * VBox frontends: Basic Frontend (BFE):
  * Keyboard class implementation
@@ -233,9 +233,7 @@ DECLCALLBACK(void *) Keyboard::i_drvQueryInterface(PPDMIBASE pInterface, const c
 DECLCALLBACK(void) Keyboard::i_drvDestruct(PPDMDRVINS pDrvIns)
 {
     PDMDRV_CHECK_VERSIONS_RETURN_VOID(pDrvIns);
-    PDRVMAINKEYBOARD pThis = PDMINS_2_DATA(pDrvIns, PDRVMAINKEYBOARD);
     LogRelFlowFunc(("iInstance=%d\n", pDrvIns->iInstance));
-
 }
 
 
